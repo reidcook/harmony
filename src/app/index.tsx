@@ -1,20 +1,28 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddSessionButton } from '@/components/add-session-button';
 import { HarmonyGreeting } from '@/components/harmony-greeting';
 import { ProgressBar } from '@/components/progress-bar';
 import { StatCard } from '@/components/stat-card';
+import { WeekHearts } from '@/components/week-hearts';
+import { DAILY_GOAL_MINUTES } from '@/constants/goal';
 import { Colors } from '@/constants/theme';
 import { useEncouragement } from '@/hooks/use-encouragement';
+import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
+import { computeStreak, minutesByDate } from '@/lib/study-sessions';
 
-// Hard-coded until goal tracking is implemented
-const streakDays = 7;
-const studiedHours = 1.5;
-const goalHours = 2;
+const toHours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
 
 export default function Index() {
   const message = useEncouragement();
-  const goalProgress = studiedHours / goalHours;
+  const sessions = useStudySessions();
+  const today = useToday();
+
+  const totals = minutesByDate(sessions);
+  const todayMinutes = today ? (totals.get(today) ?? 0) : 0;
+  const streakDays = today ? computeStreak(totals, today) : 0;
+  const goalProgress = todayMinutes / DAILY_GOAL_MINUTES;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -30,12 +38,15 @@ export default function Index() {
             <View style={styles.goalDetail}>
               <ProgressBar progress={goalProgress} />
               <Text style={styles.goalCaption}>
-                {studiedHours} / {goalHours} hrs
+                {toHours(todayMinutes)} / {toHours(DAILY_GOAL_MINUTES)} hrs
               </Text>
             </View>
           </StatCard>
         </View>
+
+        <WeekHearts today={today} totals={totals} />
       </ScrollView>
+      <AddSessionButton />
     </SafeAreaView>
   );
 }
@@ -48,6 +59,8 @@ const styles = StyleSheet.create({
   content: {
     gap: 20,
     padding: 16,
+    // Room for the floating add button
+    paddingBottom: 100,
   },
   stats: {
     flexDirection: 'row',
