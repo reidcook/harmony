@@ -3,8 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ProgressBar } from '@/components/progress-bar';
-import { DAILY_GOAL_MINUTES } from '@/constants/goal';
 import { Colors } from '@/constants/theme';
+import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useStudySessions } from '@/hooks/use-study-sessions';
 import { formatDayHeading, formatMinutes, toDateKey } from '@/lib/study-sessions';
 
@@ -14,6 +14,7 @@ export default function DaySessions() {
     .filter((s) => s.date === date)
     .sort((a, b) => a.createdAt - b.createdAt);
   const total = sessions.reduce((sum, s) => sum + s.minutes, 0);
+  const goal = useDailyGoal();
   const heading = formatDayHeading(date);
 
   return (
@@ -29,10 +30,10 @@ export default function DaySessions() {
 
         <View style={styles.card}>
           <Text style={styles.summary}>
-            {formatMinutes(total)} of {formatMinutes(DAILY_GOAL_MINUTES)} goal
-            {total >= DAILY_GOAL_MINUTES ? ' 🎉' : ''}
+            {formatMinutes(total)} of {formatMinutes(goal)} goal
+            {total >= goal ? ' 🎉' : ''}
           </Text>
-          <ProgressBar progress={total / DAILY_GOAL_MINUTES} />
+          <ProgressBar progress={total / goal} />
         </View>
 
         <Pressable

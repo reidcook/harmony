@@ -7,6 +7,7 @@ export default function RootLayout() {
       <Stack.Screen name="add-session" options={{ presentation: 'modal' }} />
       <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
       <Stack.Screen name="calendar" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="goal" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

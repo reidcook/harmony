@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DurationPicker, useDuration } from '@/components/duration-picker';
 import { Colors } from '@/constants/theme';
 import {
   addSession,
@@ -24,11 +25,6 @@ import {
 } from '@/lib/study-sessions';
 
 const QUICK_PICKS = [15, 30, 60, 120];
-
-const toNumber = (text: string) => {
-  const n = parseInt(text, 10);
-  return Number.isNaN(n) ? 0 : n;
-};
 
 function confirmDelete(onConfirm: () => void) {
   const title = 'Delete this session?';
@@ -50,17 +46,11 @@ export default function AddSession() {
   const existing = id ? getSession(id) : undefined;
   const sessionDate = existing?.date ?? date;
 
-  const [hours, setHours] = useState(existing ? String(Math.floor(existing.minutes / 60)) : '');
-  const [minutes, setMinutes] = useState(existing ? String(existing.minutes % 60) : '');
+  const duration = useDuration(existing?.minutes);
   const [description, setDescription] = useState(existing?.description ?? '');
 
-  const totalMinutes = toNumber(hours) * 60 + toNumber(minutes);
+  const totalMinutes = duration.total;
   const canSave = totalMinutes > 0;
-
-  const pick = (total: number) => {
-    setHours(String(Math.floor(total / 60)));
-    setMinutes(String(total % 60));
-  };
 
   const save = () => {
     if (!canSave) return;
@@ -101,40 +91,7 @@ export default function AddSession() {
 
           <View style={styles.card}>
             <Text style={styles.label}>How long did you study?</Text>
-            <View style={styles.durationRow}>
-              <TextInput
-                value={hours}
-                onChangeText={(t) => setHours(t.replace(/\D/g, ''))}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor={Colors.textMuted}
-                style={[styles.input, styles.durationInput]}
-                maxLength={2}
-              />
-              <Text style={styles.unit}>hrs</Text>
-              <TextInput
-                value={minutes}
-                onChangeText={(t) => setMinutes(t.replace(/\D/g, ''))}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor={Colors.textMuted}
-                style={[styles.input, styles.durationInput]}
-                maxLength={3}
-              />
-              <Text style={styles.unit}>min</Text>
-            </View>
-            <View style={styles.chips}>
-              {QUICK_PICKS.map((m) => (
-                <Pressable
-                  key={m}
-                  onPress={() => pick(m)}
-                  style={[styles.chip, totalMinutes === m && styles.chipActive]}>
-                  <Text style={[styles.chipText, totalMinutes === m && styles.chipTextActive]}>
-                    {formatMinutes(m)}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            <DurationPicker duration={duration} quickPicks={QUICK_PICKS} />
           </View>
 
           <View style={styles.card}>
@@ -227,44 +184,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.track,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  durationInput: {
-    width: 64,
-    textAlign: 'center',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  unit: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    marginRight: 8,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: Colors.track,
-  },
-  chipActive: {
-    backgroundColor: Colors.accentDeep,
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.accentDeep,
-  },
-  chipTextActive: {
-    color: Colors.card,
   },
   description: {
     minHeight: 110,

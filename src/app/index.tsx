@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,8 +7,8 @@ import { HarmonyGreeting } from '@/components/harmony-greeting';
 import { ProgressBar } from '@/components/progress-bar';
 import { StatCard } from '@/components/stat-card';
 import { WeekHearts } from '@/components/week-hearts';
-import { DAILY_GOAL_MINUTES } from '@/constants/goal';
 import { Colors } from '@/constants/theme';
+import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useEncouragement } from '@/hooks/use-encouragement';
 import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
 import { computeStreak, minutesByDate } from '@/lib/study-sessions';
@@ -18,11 +19,12 @@ export default function Index() {
   const message = useEncouragement();
   const sessions = useStudySessions();
   const today = useToday();
+  const goal = useDailyGoal();
 
   const totals = minutesByDate(sessions);
   const todayMinutes = today ? (totals.get(today) ?? 0) : 0;
   const streakDays = today ? computeStreak(totals, today) : 0;
-  const goalProgress = todayMinutes / DAILY_GOAL_MINUTES;
+  const goalProgress = todayMinutes / goal;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -34,11 +36,13 @@ export default function Index() {
           <StatCard
             icon="🎯"
             value={`${Math.round(goalProgress * 100)}%`}
-            label="of today's goal">
+            label="of today's goal"
+            onPress={() => router.push('/goal')}
+            accessibilityHint="Change your daily study goal">
             <View style={styles.goalDetail}>
               <ProgressBar progress={goalProgress} />
               <Text style={styles.goalCaption}>
-                {toHours(todayMinutes)} / {toHours(DAILY_GOAL_MINUTES)} hrs
+                {toHours(todayMinutes)} / {toHours(goal)} hrs · tap to edit
               </Text>
             </View>
           </StatCard>
