@@ -5,9 +5,11 @@
 Harmony is a study-goal tracker for nursing students. Harmony, a pink nurse-heart at `assets/harmony/heartprogress.png`, encourages the user and shows their study streak and progress toward today's goal.
 
 ### Current state
-- `src/app/index.tsx` is the home screen. It shows the mascot, an encouragement bubble, two stat cards (streak, daily goal), a week row of hearts (`WeekHearts`), and a bottom-right "+" button that opens `src/app/add-session.tsx`.
-- `src/app/day/[date].tsx` lists one day's sessions. `index` opens it when a heart is tapped. `_layout.tsx` presents both the add and day screens as modals.
-- Study sessions live in `src/lib/study-sessions.ts`, a small external store saved to `localStorage` under `harmony.sessions`. Read them with `useStudySessions()` / `useToday()` from `src/hooks/use-study-sessions.ts`.
+- `src/app/index.tsx` is the home screen. It shows the mascot, an encouragement bubble, two stat cards (streak, daily goal), a week row of hearts (`WeekHearts`), the 3 soonest upcomings (`UpcomingsCard`), and a bottom-right "+" button that opens `src/app/add-session.tsx`.
+- `src/app/day/[date].tsx` lists one day's sessions, and `src/app/calendar.tsx` shows a month of hearts. `_layout.tsx` presents every non-home screen as a modal.
+- All persisted data goes through `createPersistedStore(key, fallback)` in `src/lib/persisted-store.ts`, which gives a cached JSON value in `localStorage` that `useSyncExternalStore` can subscribe to. Build new stores on it.
+- Study sessions live in `src/lib/study-sessions.ts` (key `harmony.sessions`). Read them with `useStudySessions()` / `useToday()` from `src/hooks/use-study-sessions.ts`.
+- Upcomings are quizzes, exams, and finals with a date. They live in `src/lib/upcomings.ts` (key `harmony.upcomings`) and are read with `useUpcomings()`. A session links to any number of upcomings through `upcomingIds`. Older saves with a single `upcomingId` are converted on load by `migrateSession`, using the `migrate` option of `createPersistedStore`. Deleting an upcoming unlinks its sessions but keeps them. `src/app/add-upcoming.tsx` creates or edits an upcoming (`?id=`). `src/app/upcoming/[id].tsx` shows an upcoming's linked sessions and their total time.
 - On native, `localStorage` comes from the `expo-sqlite/localStorage/install` polyfill, imported only in `src/lib/install-local-storage.ts`. The `.web.ts` twin is empty because importing expo-sqlite on web breaks bundling ("Worker chunk not found").
 - The daily goal is saved in `localStorage` under `harmony.dailyGoalMinutes` by `src/lib/daily-goal.ts`, and the default is `DEFAULT_DAILY_GOAL_MINUTES`. Read it with `useDailyGoal()`. Tapping the goal card opens `src/app/goal.tsx` to change it. The streak counts consecutive days with at least one session, whether or not the goal was met. Not having studied yet today doesn't break it. The hearts are what show whether the goal was met.
 

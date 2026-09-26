@@ -6,7 +6,9 @@ import { ProgressBar } from '@/components/progress-bar';
 import { Colors } from '@/constants/theme';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useStudySessions } from '@/hooks/use-study-sessions';
+import { useUpcomings } from '@/hooks/use-upcomings';
 import { formatDayHeading, formatMinutes, toDateKey } from '@/lib/study-sessions';
+import { UPCOMING_TYPES } from '@/lib/upcomings';
 
 export default function DaySessions() {
   const { date } = useLocalSearchParams<{ date: string }>();
@@ -15,6 +17,7 @@ export default function DaySessions() {
     .sort((a, b) => a.createdAt - b.createdAt);
   const total = sessions.reduce((sum, s) => sum + s.minutes, 0);
   const goal = useDailyGoal();
+  const upcomings = useUpcomings();
   const heading = formatDayHeading(date);
 
   return (
@@ -46,33 +49,45 @@ export default function DaySessions() {
         {sessions.length === 0 ? (
           <Text style={styles.empty}>No study sessions this day.</Text>
         ) : (
-          sessions.map((session) => (
-            <Pressable
-              key={session.id}
-              onPress={() =>
-                router.push({ pathname: '/add-session', params: { id: session.id } })
-              }
-              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-              accessibilityRole="button"
-              accessibilityHint="Edit or delete this session">
-              <View style={styles.sessionHeader}>
-                <Text style={styles.duration}>{formatMinutes(session.minutes)}</Text>
-                {/* The logged time only means something if it was logged on that same day */}
-                {toDateKey(new Date(session.createdAt)) === session.date && (
-                  <Text style={styles.time}>
-                    {new Date(session.createdAt).toLocaleTimeString(undefined, {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
-                  </Text>
+          sessions.map((session) => {
+            const linked = upcomings.filter((u) => session.upcomingIds.includes(u.id));
+            return (
+              <Pressable
+                key={session.id}
+                onPress={() =>
+                  router.push({ pathname: '/add-session', params: { id: session.id } })
+                }
+                style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityHint="Edit or delete this session">
+                <View style={styles.sessionHeader}>
+                  <Text style={styles.duration}>{formatMinutes(session.minutes)}</Text>
+                  {/* The logged time only means something if it was logged on that same day */}
+                  {toDateKey(new Date(session.createdAt)) === session.date && (
+                    <Text style={styles.time}>
+                      {new Date(session.createdAt).toLocaleTimeString(undefined, {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </Text>
+                  )}
+                </View>
+                <Text style={session.description ? styles.description : styles.noDescription}>
+                  {session.description || 'No description'}
+                </Text>
+                {linked.length > 0 && (
+                  <View style={styles.upcomingTags}>
+                    {linked.map((upcoming) => (
+                      <Text key={upcoming.id} style={styles.upcomingTag}>
+                        For {UPCOMING_TYPES[upcoming.type].emoji} {upcoming.title}
+                      </Text>
+                    ))}
+                  </View>
                 )}
-              </View>
-              <Text style={session.description ? styles.description : styles.noDescription}>
-                {session.description || 'No description'}
-              </Text>
-              <Text style={styles.editHint}>Tap to edit or delete</Text>
-            </Pressable>
-          ))
+                <Text style={styles.editHint}>Tap to edit or delete</Text>
+              </Pressable>
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -121,6 +136,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: Colors.card,
+  },
+  upcomingTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  upcomingTag: {
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    overflow: 'hidden',
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.accentDeep,
+    backgroundColor: Colors.track,
   },
   editHint: {
     fontSize: 12,

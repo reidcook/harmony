@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,8 +12,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Chip } from '@/components/chip';
 import { DurationPicker, useDuration } from '@/components/duration-picker';
 import { Colors } from '@/constants/theme';
+import { useToday } from '@/hooks/use-study-sessions';
+import { useUpcomings } from '@/hooks/use-upcomings';
+import { confirmDelete } from '@/lib/confirm';
 import {
   addSession,
   formatDayHeading,
@@ -23,51 +26,62 @@ import {
   removeSession,
   updateSession,
 } from '@/lib/study-sessions';
+import { nextUpcomings, UPCOMING_TYPES } from '@/lib/upcomings';
 
 const QUICK_PICKS = [15, 30, 60, 120];
 
-function confirmDelete(onConfirm: () => void) {
-  const title = 'Delete this session?';
-  const detail = "It will be removed from your streak and goal. This can't be undone.";
-  // Alert has no buttons on web
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${detail}`)) onConfirm();
-    return;
-  }
-  Alert.alert(title, detail, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Delete', style: 'destructive', onPress: onConfirm },
-  ]);
-}
-
-// Logs a new session (today, or ?date=YYYY-MM-DD), or edits an existing one when opened with ?id=
+// Logs a new session (today, or ?date=YYYY-MM-DD), or edits an existing one when opened with ?id=.
+// ?upcomingId= preselects a quiz/exam/final it's for. A session can be for several.
 export default function AddSession() {
-  const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
-  const existing = id ? getSession(id) : undefined;
-  const sessionDate = existing?.date ?? date;
+  const params = useLocalSearchParams<{ id?: string; date?: string; upcomingId?: string }>();
+  const existing = params.id ? getSession(params.id) : undefined;
+  const sessionDate = existing?.date ?? params.date;
 
   const duration = useDuration(existing?.minutes);
   const [description, setDescription] = useState(existing?.description ?? '');
+  const [upcomingIds, setUpcomingIds] = useState<string[]>(
+    existing ? existing.upcomingIds : params.upcomingId ? [params.upcomingId] : []
+  );
+
+  const today = useToday();
+  const upcomings = useUpcomings();
+  // Future ones, plus any this session is already linked to even if they're past
+  const future = today ? nextUpcomings(upcomings, today) : upcomings;
+  const pastLinked = upcomings.filter((u) => upcomingIds.includes(u.id) && !future.includes(u));
+  const upcomingChoices = [...pastLinked, ...future];
+
+  const toggleUpcoming = (id: string) =>
+    setUpcomingIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
 
   const totalMinutes = duration.total;
   const canSave = totalMinutes > 0;
 
   const save = () => {
     if (!canSave) return;
+    // Drop links to anything deleted while this screen was open
+    const fields = {
+      minutes: totalMinutes,
+      description,
+      upcomingIds: upcomingIds.filter((id) => upcomings.some((u) => u.id === id)),
+    };
     if (existing) {
-      updateSession(existing.id, { minutes: totalMinutes, description });
+      updateSession(existing.id, fields);
     } else {
-      addSession({ minutes: totalMinutes, description, date });
+      addSession({ ...fields, date: params.date });
     }
     router.back();
   };
 
   const remove = () => {
     if (!existing) return;
-    confirmDelete(() => {
-      removeSession(existing.id);
-      router.back();
-    });
+    confirmDelete(
+      'Delete this session?',
+      "It will be removed from your streak and goal. This can't be undone.",
+      () => {
+        removeSession(existing.id);
+        router.back();
+      }
+    );
   };
 
   return (
@@ -106,6 +120,30 @@ export default function AddSession() {
               textAlignVertical="top"
             />
           </View>
+
+          {upcomingChoices.length > 0 && (
+            <View style={styles.card}>
+              <View>
+                <Text style={styles.label}>Studying for</Text>
+                <Text style={styles.hint}>Pick as many as apply</Text>
+              </View>
+              <View style={styles.chips}>
+                <Chip
+                  label="Nothing specific"
+                  selected={upcomingIds.length === 0}
+                  onPress={() => setUpcomingIds([])}
+                />
+                {upcomingChoices.map((u) => (
+                  <Chip
+                    key={u.id}
+                    label={`${UPCOMING_TYPES[u.type].emoji} ${u.title}`}
+                    selected={upcomingIds.includes(u.id)}
+                    onPress={() => toggleUpcoming(u.id)}
+                  />
+                ))}
+              </View>
+            </View>
+          )}
 
           <Pressable
             onPress={save}
@@ -184,6 +222,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.track,
+  },
+  hint: {
+    marginTop: 2,
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   description: {
     minHeight: 110,

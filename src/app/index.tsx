@@ -6,6 +6,7 @@ import { AddSessionButton } from '@/components/add-session-button';
 import { HarmonyGreeting } from '@/components/harmony-greeting';
 import { ProgressBar } from '@/components/progress-bar';
 import { StatCard } from '@/components/stat-card';
+import { UpcomingsCard } from '@/components/upcomings-card';
 import { WeekHearts } from '@/components/week-hearts';
 import { Colors } from '@/constants/theme';
 import { useDailyGoal } from '@/hooks/use-daily-goal';
@@ -49,6 +50,8 @@ export default function Index() {
         </View>
 
         <WeekHearts today={today} totals={totals} />
+
+        <UpcomingsCard today={today} />
       </ScrollView>
       <AddSessionButton />
     </SafeAreaView>

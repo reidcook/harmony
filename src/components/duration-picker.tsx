@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Chip } from '@/components/chip';
 import { Colors } from '@/constants/theme';
 import { formatMinutes } from '@/lib/study-sessions';
 
@@ -64,14 +65,7 @@ export function DurationPicker({ duration, quickPicks }: Props) {
       </View>
       <View style={styles.chips}>
         {quickPicks.map((m) => (
-          <Pressable
-            key={m}
-            onPress={() => pick(m)}
-            style={[styles.chip, total === m && styles.chipActive]}>
-            <Text style={[styles.chipText, total === m && styles.chipTextActive]}>
-              {formatMinutes(m)}
-            </Text>
-          </Pressable>
+          <Chip key={m} label={formatMinutes(m)} selected={total === m} onPress={() => pick(m)} />
         ))}
       </View>
     </>
@@ -105,22 +99,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    backgroundColor: Colors.track,
-  },
-  chipActive: {
-    backgroundColor: Colors.accentDeep,
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.accentDeep,
-  },
-  chipTextActive: {
-    color: Colors.card,
   },
 });

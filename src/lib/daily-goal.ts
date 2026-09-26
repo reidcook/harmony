@@ -1,32 +1,13 @@
-import '@/lib/install-local-storage';
-
 import { DEFAULT_DAILY_GOAL_MINUTES } from '@/constants/goal';
+import { createPersistedStore } from '@/lib/persisted-store';
 
-const STORAGE_KEY = 'harmony.dailyGoalMinutes';
+const store = createPersistedStore('harmony.dailyGoalMinutes', DEFAULT_DAILY_GOAL_MINUTES);
 
-const listeners = new Set<() => void>();
-let cache: number | null = null;
+export const subscribeDailyGoal = store.subscribe;
 
-function load() {
-  if (typeof localStorage === 'undefined') return DEFAULT_DAILY_GOAL_MINUTES;
-  const stored = Number(localStorage.getItem(STORAGE_KEY));
+export function getDailyGoal() {
+  const stored = store.get();
   return stored > 0 ? stored : DEFAULT_DAILY_GOAL_MINUTES;
 }
 
-export function subscribeDailyGoal(listener: () => void) {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-export function getDailyGoal() {
-  cache ??= load();
-  return cache;
-}
-
-export function setDailyGoal(minutes: number) {
-  cache = minutes;
-  if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, String(minutes));
-  listeners.forEach((listener) => listener());
-}
+export const setDailyGoal = store.set;

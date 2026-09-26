@@ -1,4 +1,4 @@
-import '@/lib/install-local-storage';
+import { createPersistedStore, newId } from '@/lib/persisted-store';
 
 export type StudySession = {
   id: string;
@@ -6,74 +6,77 @@ export type StudySession = {
   minutes: number;
   description: string;
   createdAt: number;
+  upcomingIds: string[]; // the quizzes/exams/finals this was studying for
 };
 
-const STORAGE_KEY = 'harmony.sessions';
+type SessionFields = { minutes: number; description: string; upcomingIds: string[] };
+
+// Sessions saved before multi-linking had a single optional `upcomingId`
+type StoredSession = Omit<StudySession, 'upcomingIds'> & {
+  upcomingIds?: string[];
+  upcomingId?: string;
+};
+
+function migrateSession({ upcomingId, upcomingIds, ...rest }: StoredSession): StudySession {
+  return { ...rest, upcomingIds: upcomingIds ?? (upcomingId ? [upcomingId] : []) };
+}
 
 export const EMPTY_SESSIONS: StudySession[] = [];
 
-const listeners = new Set<() => void>();
-let cache: StudySession[] | null = null;
+const store = createPersistedStore('harmony.sessions', EMPTY_SESSIONS, (stored) =>
+  (stored as StoredSession[]).map(migrateSession)
+);
 
-function hasStorage() {
-  return typeof localStorage !== 'undefined';
-}
+export const subscribe = store.subscribe;
+export const getSessions = store.get;
 
-function load(): StudySession[] {
-  if (!hasStorage()) return EMPTY_SESSIONS;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as StudySession[]) : EMPTY_SESSIONS;
-  } catch {
-    return EMPTY_SESSIONS;
-  }
-}
-
-export function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
-// Returns the same array until a write happens, as useSyncExternalStore requires
-export function getSessions() {
-  cache ??= load();
-  return cache;
-}
-
-export function addSession(input: { minutes: number; description: string; date?: string }) {
+export function addSession(input: SessionFields & { date?: string }) {
   const now = Date.now();
-  const session: StudySession = {
-    id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
-    date: input.date ?? toDateKey(new Date(now)),
-    minutes: input.minutes,
-    description: input.description.trim(),
-    createdAt: now,
-  };
-  save([...getSessions(), session]);
+  store.set([
+    ...getSessions(),
+    {
+      id: newId(),
+      date: input.date ?? toDateKey(new Date(now)),
+      minutes: input.minutes,
+      description: input.description.trim(),
+      createdAt: now,
+      upcomingIds: input.upcomingIds,
+    },
+  ]);
 }
 
 export function getSession(id: string) {
   return getSessions().find((s) => s.id === id);
 }
 
-export function updateSession(id: string, changes: { minutes: number; description: string }) {
-  save(
+export function updateSession(id: string, changes: SessionFields) {
+  store.set(
     getSessions().map((s) =>
-      s.id === id ? { ...s, minutes: changes.minutes, description: changes.description.trim() } : s
+      s.id === id
+        ? {
+            ...s,
+            minutes: changes.minutes,
+            description: changes.description.trim(),
+            upcomingIds: changes.upcomingIds,
+          }
+        : s
     )
   );
 }
 
 export function removeSession(id: string) {
-  save(getSessions().filter((s) => s.id !== id));
+  store.set(getSessions().filter((s) => s.id !== id));
 }
 
-function save(sessions: StudySession[]) {
-  cache = sessions;
-  if (hasStorage()) localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
-  listeners.forEach((listener) => listener());
+// Keeps the sessions (and their time) but drops the link to a deleted upcoming
+export function unlinkUpcoming(upcomingId: string) {
+  store.set(
+    getSessions().map((s) =>
+      s.upcomingIds.includes(upcomingId)
+        ? { ...s, upcomingIds: s.upcomingIds.filter((id) => id !== upcomingId) }
+        : s
+    )
+  );
 }
 
 export function toDateKey(date: Date) {
@@ -98,6 +101,20 @@ export const MONTHS = [
 export function formatDayHeading(key: string) {
   const date = fromDateKey(key);
   return `${WEEKDAYS[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+}
+
+// Whole days from one date key to another (negative if `to` is earlier)
+export function daysUntil(from: string, to: string) {
+  const ms = fromDateKey(to).getTime() - fromDateKey(from).getTime();
+  // Rounding absorbs the hour lost or gained across daylight-saving changes
+  return Math.round(ms / 86_400_000);
+}
+
+export function formatDaysAway(days: number) {
+  if (days < 0) return 'Past';
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `in ${days} days`;
 }
 
 function addDays(key: string, days: number) {
