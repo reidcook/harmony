@@ -6,4 +6,5 @@ export const Colors = {
   track: '#FCE4EE',
   text: '#3A2A33',
   textMuted: '#8A7580',
+  danger: '#C8435A',
 };

@@ -51,7 +51,27 @@ export function addSession(input: { minutes: number; description: string; date?:
     description: input.description.trim(),
     createdAt: now,
   };
-  cache = [...getSessions(), session];
+  save([...getSessions(), session]);
+}
+
+export function getSession(id: string) {
+  return getSessions().find((s) => s.id === id);
+}
+
+export function updateSession(id: string, changes: { minutes: number; description: string }) {
+  save(
+    getSessions().map((s) =>
+      s.id === id ? { ...s, minutes: changes.minutes, description: changes.description.trim() } : s
+    )
+  );
+}
+
+export function removeSession(id: string) {
+  save(getSessions().filter((s) => s.id !== id));
+}
+
+function save(sessions: StudySession[]) {
+  cache = sessions;
   if (hasStorage()) localStorage.setItem(STORAGE_KEY, JSON.stringify(cache));
   listeners.forEach((listener) => listener());
 }

@@ -1,6 +1,7 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,7 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
-import { addSession, formatMinutes } from '@/lib/study-sessions';
+import {
+  addSession,
+  formatMinutes,
+  getSession,
+  removeSession,
+  updateSession,
+} from '@/lib/study-sessions';
 
 const QUICK_PICKS = [15, 30, 60, 120];
 
@@ -22,10 +29,28 @@ const toNumber = (text: string) => {
   return Number.isNaN(n) ? 0 : n;
 };
 
+function confirmDelete(onConfirm: () => void) {
+  const title = 'Delete this session?';
+  const detail = "It will be removed from your streak and goal. This can't be undone.";
+  // Alert has no buttons on web
+  if (Platform.OS === 'web') {
+    if (window.confirm(`${title}\n\n${detail}`)) onConfirm();
+    return;
+  }
+  Alert.alert(title, detail, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Delete', style: 'destructive', onPress: onConfirm },
+  ]);
+}
+
+// Logs a new session, or edits an existing one when opened with ?id=
 export default function AddSession() {
-  const [hours, setHours] = useState('');
-  const [minutes, setMinutes] = useState('');
-  const [description, setDescription] = useState('');
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const existing = id ? getSession(id) : undefined;
+
+  const [hours, setHours] = useState(existing ? String(Math.floor(existing.minutes / 60)) : '');
+  const [minutes, setMinutes] = useState(existing ? String(existing.minutes % 60) : '');
+  const [description, setDescription] = useState(existing?.description ?? '');
 
   const totalMinutes = toNumber(hours) * 60 + toNumber(minutes);
   const canSave = totalMinutes > 0;
@@ -37,8 +62,20 @@ export default function AddSession() {
 
   const save = () => {
     if (!canSave) return;
-    addSession({ minutes: totalMinutes, description });
+    if (existing) {
+      updateSession(existing.id, { minutes: totalMinutes, description });
+    } else {
+      addSession({ minutes: totalMinutes, description });
+    }
     router.back();
+  };
+
+  const remove = () => {
+    if (!existing) return;
+    confirmDelete(() => {
+      removeSession(existing.id);
+      router.back();
+    });
   };
 
   return (
@@ -53,7 +90,7 @@ export default function AddSession() {
             </Pressable>
           </View>
 
-          <Text style={styles.title}>Log a study session</Text>
+          <Text style={styles.title}>{existing ? 'Edit study session' : 'Log a study session'}</Text>
 
           <View style={styles.card}>
             <Text style={styles.label}>How long did you study?</Text>
@@ -118,6 +155,14 @@ export default function AddSession() {
               {canSave ? `Save ${formatMinutes(totalMinutes)}` : 'Save session'}
             </Text>
           </Pressable>
+
+          {existing && (
+            <Pressable
+              onPress={remove}
+              style={({ pressed }) => [styles.delete, pressed && styles.savePressed]}>
+              <Text style={styles.deleteText}>Delete session</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -223,6 +268,18 @@ const styles = StyleSheet.create({
   },
   savePressed: {
     opacity: 0.8,
+  },
+  delete: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.danger,
+  },
+  deleteText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.danger,
   },
   saveText: {
     fontSize: 17,

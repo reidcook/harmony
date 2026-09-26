@@ -42,7 +42,7 @@ export default function DaySessions() {
         <View style={styles.card}>
           <Text style={styles.summary}>
             {formatMinutes(total)} of {formatMinutes(DAILY_GOAL_MINUTES)} goal
-            {total >= DAILY_GOAL_MINUTES ? ' 💖' : ''}
+            {total >= DAILY_GOAL_MINUTES ? ' 🎉' : ''}
           </Text>
           <ProgressBar progress={total / DAILY_GOAL_MINUTES} />
         </View>
@@ -51,7 +51,14 @@ export default function DaySessions() {
           <Text style={styles.empty}>No study sessions this day.</Text>
         ) : (
           sessions.map((session) => (
-            <View key={session.id} style={styles.card}>
+            <Pressable
+              key={session.id}
+              onPress={() =>
+                router.push({ pathname: '/add-session', params: { id: session.id } })
+              }
+              style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityHint="Edit or delete this session">
               <View style={styles.sessionHeader}>
                 <Text style={styles.duration}>{formatMinutes(session.minutes)}</Text>
                 <Text style={styles.time}>
@@ -64,7 +71,8 @@ export default function DaySessions() {
               <Text style={session.description ? styles.description : styles.noDescription}>
                 {session.description || 'No description'}
               </Text>
-            </View>
+              <Text style={styles.editHint}>Tap to edit or delete</Text>
+            </Pressable>
           ))
         )}
       </ScrollView>
@@ -100,6 +108,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: Colors.card,
     boxShadow: '0 4px 12px rgba(224, 103, 154, 0.15)',
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  editHint: {
+    fontSize: 12,
+    color: Colors.accentDeep,
   },
   summary: {
     fontSize: 16,
