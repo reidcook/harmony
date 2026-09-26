@@ -6,19 +6,7 @@ import { ProgressBar } from '@/components/progress-bar';
 import { DAILY_GOAL_MINUTES } from '@/constants/goal';
 import { Colors } from '@/constants/theme';
 import { useStudySessions } from '@/hooks/use-study-sessions';
-import { formatMinutes, fromDateKey } from '@/lib/study-sessions';
-
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-// Built by hand so the server render and the browser agree regardless of locale
-function formatDayHeading(key: string) {
-  const date = fromDateKey(key);
-  return `${WEEKDAYS[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`;
-}
+import { formatDayHeading, formatMinutes, toDateKey } from '@/lib/study-sessions';
 
 export default function DaySessions() {
   const { date } = useLocalSearchParams<{ date: string }>();
@@ -47,6 +35,13 @@ export default function DaySessions() {
           <ProgressBar progress={total / DAILY_GOAL_MINUTES} />
         </View>
 
+        <Pressable
+          onPress={() => router.push({ pathname: '/add-session', params: { date } })}
+          style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+          accessibilityRole="button">
+          <Text style={styles.addButtonText}>+ Add session to this day</Text>
+        </Pressable>
+
         {sessions.length === 0 ? (
           <Text style={styles.empty}>No study sessions this day.</Text>
         ) : (
@@ -61,12 +56,15 @@ export default function DaySessions() {
               accessibilityHint="Edit or delete this session">
               <View style={styles.sessionHeader}>
                 <Text style={styles.duration}>{formatMinutes(session.minutes)}</Text>
-                <Text style={styles.time}>
-                  {new Date(session.createdAt).toLocaleTimeString(undefined, {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
-                </Text>
+                {/* The logged time only means something if it was logged on that same day */}
+                {toDateKey(new Date(session.createdAt)) === session.date && (
+                  <Text style={styles.time}>
+                    {new Date(session.createdAt).toLocaleTimeString(undefined, {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                )}
               </View>
               <Text style={session.description ? styles.description : styles.noDescription}>
                 {session.description || 'No description'}
@@ -111,6 +109,17 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  addButton: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: Colors.accentDeep,
+  },
+  addButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.card,
   },
   editHint: {
     fontSize: 12,

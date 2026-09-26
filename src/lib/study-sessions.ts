@@ -88,6 +88,18 @@ export function fromDateKey(key: string) {
   return new Date(y, m - 1, d);
 }
 
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+// Built by hand so the server render and the browser agree regardless of locale
+export function formatDayHeading(key: string) {
+  const date = fromDateKey(key);
+  return `${WEEKDAYS[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}`;
+}
+
 function addDays(key: string, days: number) {
   const date = fromDateKey(key);
   date.setDate(date.getDate() + days);
@@ -99,6 +111,18 @@ export function getWeekDates(todayKey: string) {
   const mondayOffset = (fromDateKey(todayKey).getDay() + 6) % 7;
   const monday = addDays(todayKey, -mondayOffset);
   return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}
+
+// Monday-first grid for a month (0-based `month`), padded with nulls to whole weeks
+export function getMonthGrid(year: number, month: number) {
+  const leading = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (string | null)[] = Array(leading).fill(null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push(toDateKey(new Date(year, month, day)));
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
 }
 
 export function minutesByDate(sessions: StudySession[]) {

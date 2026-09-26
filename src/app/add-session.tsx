@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import {
   addSession,
+  formatDayHeading,
   formatMinutes,
   getSession,
   removeSession,
@@ -43,10 +44,11 @@ function confirmDelete(onConfirm: () => void) {
   ]);
 }
 
-// Logs a new session, or edits an existing one when opened with ?id=
+// Logs a new session (today, or ?date=YYYY-MM-DD), or edits an existing one when opened with ?id=
 export default function AddSession() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
   const existing = id ? getSession(id) : undefined;
+  const sessionDate = existing?.date ?? date;
 
   const [hours, setHours] = useState(existing ? String(Math.floor(existing.minutes / 60)) : '');
   const [minutes, setMinutes] = useState(existing ? String(existing.minutes % 60) : '');
@@ -65,7 +67,7 @@ export default function AddSession() {
     if (existing) {
       updateSession(existing.id, { minutes: totalMinutes, description });
     } else {
-      addSession({ minutes: totalMinutes, description });
+      addSession({ minutes: totalMinutes, description, date });
     }
     router.back();
   };
@@ -90,7 +92,12 @@ export default function AddSession() {
             </Pressable>
           </View>
 
-          <Text style={styles.title}>{existing ? 'Edit study session' : 'Log a study session'}</Text>
+          <View>
+            <Text style={styles.title}>
+              {existing ? 'Edit study session' : 'Log a study session'}
+            </Text>
+            {sessionDate && <Text style={styles.subtitle}>{formatDayHeading(sessionDate)}</Text>}
+          </View>
 
           <View style={styles.card}>
             <Text style={styles.label}>How long did you study?</Text>
@@ -193,6 +200,12 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     color: Colors.text,
+  },
+  subtitle: {
+    marginTop: 2,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.accentDeep,
   },
   card: {
     gap: 12,

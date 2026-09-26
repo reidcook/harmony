@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { DAILY_GOAL_MINUTES } from '@/constants/goal';
+import { DayHeart } from '@/components/day-heart';
 import { Colors } from '@/constants/theme';
 import { getWeekDates } from '@/lib/study-sessions';
 
@@ -18,19 +18,27 @@ export function WeekHearts({ today, totals }: Props) {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>This week</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>This week</Text>
+        <Pressable
+          onPress={() => router.push('/calendar')}
+          hitSlop={10}
+          style={({ pressed }) => [styles.calendarButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Open monthly calendar">
+          <SymbolView
+            name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }}
+            tintColor={Colors.accentDeep}
+            size={20}
+          />
+        </Pressable>
+      </View>
       <View style={styles.row}>
         {DAY_LETTERS.map((letter, i) => {
           const date = week?.[i];
           const minutes = date ? (totals.get(date) ?? 0) : 0;
           const isToday = date === today;
           const isFuture = !date || !today || date > today;
-          const color =
-            minutes >= DAILY_GOAL_MINUTES
-              ? Colors.accentDeep
-              : minutes > 0
-                ? Colors.accent
-                : Colors.track;
 
           return (
             <Pressable
@@ -47,11 +55,7 @@ export function WeekHearts({ today, totals }: Props) {
               ]}
               accessibilityRole="button"
               accessibilityLabel={date ? `View study sessions for ${date}` : undefined}>
-              <SymbolView
-                name={{ ios: 'heart.fill', android: 'favorite', web: 'favorite' }}
-                tintColor={color}
-                size={30}
-              />
+              <DayHeart minutes={minutes} size={30} />
               <Text style={[styles.letter, isToday && styles.todayLetter]}>{letter}</Text>
             </Pressable>
           );
@@ -68,6 +72,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: Colors.card,
     boxShadow: '0 4px 12px rgba(224, 103, 154, 0.15)',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  calendarButton: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: Colors.track,
   },
   title: {
     fontSize: 14,
