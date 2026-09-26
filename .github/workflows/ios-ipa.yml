@@ -1,0 +1,56 @@
+# Builds an unsigned Release .ipa for sideloading with AltStore, which re-signs
+# it with your Apple ID on install. Run it from the Actions tab.
+name: iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # The .icon app icon (Icon Composer) needs Xcode 26+.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Generates ios/ from app.json and runs pod install.
+      - run: npx expo prebuild --platform ios --clean
+
+      - name: Build app without code signing
+        run: |
+          WORKSPACE=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package .ipa
+        run: |
+          APP=$(ls -d build/Build/Products/Release-iphoneos/*.app | head -1)
+          mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qry Harmony.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Harmony-ipa
+          path: Harmony.ipa
+          retention-days: 14
