@@ -17,21 +17,22 @@ export function WeekHearts({ today, totals }: Props) {
   const week = today ? getWeekDates(today) : null;
 
   return (
+    <Pressable
+          onPress={() => router.push('/calendar')}
+          hitSlop={10}
+          style={({ pressed }) => [pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Open monthly calendar">
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.title}>This week</Text>
-        <Pressable
-          onPress={() => router.push('/calendar')}
-          hitSlop={10}
-          style={({ pressed }) => [styles.calendarButton, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Open monthly calendar">
+          <View style={styles.calendarButton}>
           <SymbolView
             name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }}
             tintColor={Colors.accentDeep}
             size={20}
           />
-        </Pressable>
+          </View>
       </View>
       <View style={styles.row}>
         {DAY_LETTERS.map((letter, i) => {
@@ -62,6 +63,7 @@ export function WeekHearts({ today, totals }: Props) {
         })}
       </View>
     </View>
+    </Pressable>
   );
 }
 
@@ -106,7 +108,7 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   pressed: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   letter: {
     fontSize: 12,
