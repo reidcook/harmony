@@ -2,9 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ProgressBar } from '@/components/progress-bar';
+import { DayHeart } from '@/components/day-heart';
 import { Colors } from '@/constants/theme';
-import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useStudySessions } from '@/hooks/use-study-sessions';
 import { useUpcomings } from '@/hooks/use-upcomings';
 import { formatDayHeading, formatMinutes, toDateKey } from '@/lib/study-sessions';
@@ -16,7 +15,6 @@ export default function DaySessions() {
     .filter((s) => s.date === date)
     .sort((a, b) => a.createdAt - b.createdAt);
   const total = sessions.reduce((sum, s) => sum + s.minutes, 0);
-  const goal = useDailyGoal();
   const upcomings = useUpcomings();
   const heading = formatDayHeading(date);
 
@@ -31,12 +29,9 @@ export default function DaySessions() {
 
         <Text style={styles.title}>{heading}</Text>
 
-        <View style={styles.card}>
-          <Text style={styles.summary}>
-            {formatMinutes(total)} of {formatMinutes(goal)} goal
-            {total >= goal ? ' 🎉' : ''}
-          </Text>
-          <ProgressBar progress={total / goal} />
+        <View style={[styles.card, styles.summaryCard]}>
+          <DayHeart minutes={total} size={26} />
+          <Text style={styles.summary}>{formatMinutes(total)} studied</Text>
         </View>
 
         <Pressable
@@ -155,6 +150,11 @@ const styles = StyleSheet.create({
   editHint: {
     fontSize: 12,
     color: Colors.accentDeep,
+  },
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   summary: {
     fontSize: 16,

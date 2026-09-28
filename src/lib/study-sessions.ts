@@ -150,15 +150,21 @@ export function minutesByDate(sessions: StudySession[]) {
   return totals;
 }
 
-export function computeStreak(totals: Map<string, number>, todayKey: string) {
-  // Any logged study keeps the streak alive; the hearts show whether the goal was met
-  const studied = (key: string) => (totals.get(key) ?? 0) > 0;
-  // Not having studied yet today doesn't break the streak
-  let day = studied(todayKey) ? todayKey : addDays(todayKey, -1);
+// Total minutes in the Monday–Sunday week containing `dayKey`
+export function weekMinutes(totals: Map<string, number>, dayKey: string) {
+  return getWeekDates(dayKey).reduce((sum, d) => sum + (totals.get(d) ?? 0), 0);
+}
+
+// Consecutive weeks that met the weekly goal
+export function computeWeekStreak(totals: Map<string, number>, todayKey: string, goal: number) {
+  const met = (dayKey: string) => weekMinutes(totals, dayKey) >= goal;
+  // This week isn't over yet, so falling short so far doesn't break the streak
+  let day = met(todayKey) ? todayKey : addDays(todayKey, -7);
   let streak = 0;
-  while (studied(day)) {
+  // A goal above zero guarantees this stops at the first week without study
+  while (met(day)) {
     streak++;
-    day = addDays(day, -1);
+    day = addDays(day, -7);
   }
   return streak;
 }

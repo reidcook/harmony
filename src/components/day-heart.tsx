@@ -1,24 +1,37 @@
 import { SymbolView } from 'expo-symbols';
+import { StyleSheet, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { useDailyGoal } from '@/hooks/use-daily-goal';
+
+const HEART_HOUR_MINUTES = 60;
+const STRONG_SCALE = 1.15;
 
 type Props = {
   minutes: number;
   size: number;
 };
 
-// Deep pink once the goal is met, light pink for some study, pale for none
+// Pale for none, pink for under an hour, deeper and bigger for an hour or more
 export function DayHeart({ minutes, size }: Props) {
-  const goal = useDailyGoal();
-  const color =
-    minutes >= goal ? Colors.accentDeep : minutes > 0 ? Colors.accent : Colors.track;
+  const strong = minutes >= HEART_HOUR_MINUTES;
+  const color = strong ? Colors.heartStrong : minutes > 0 ? Colors.accent : Colors.track;
 
   return (
-    <SymbolView
-      name={{ ios: 'heart.fill', android: 'favorite', web: 'favorite' }}
-      tintColor={color}
-      size={size}
-    />
+    // Fixed slot so the bigger heart doesn't shift the rows around it
+    <View style={[styles.slot, { width: size, height: size }]}>
+      <SymbolView
+        name={{ ios: 'heart.fill', android: 'favorite', web: 'favorite' }}
+        tintColor={color}
+        size={strong ? Math.round(size * STRONG_SCALE) : size}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  slot: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
+});

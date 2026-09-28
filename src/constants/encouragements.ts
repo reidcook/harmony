@@ -11,5 +11,5 @@ export const ENCOURAGEMENTS = [
   "Another study session down ✅",
   "I believe in you! 🎅",
   "Your dedication is admirable 🤩",
-  "You - and every other nurse - are heros 🦸"
+  "You and every other nurse are heros 🦸"
 ];

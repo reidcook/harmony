@@ -4,18 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DurationPicker, useDuration } from '@/components/duration-picker';
 import { Colors } from '@/constants/theme';
-import { getDailyGoal, setDailyGoal } from '@/lib/daily-goal';
 import { formatMinutes } from '@/lib/study-sessions';
+import { getWeeklyGoal, setWeeklyGoal } from '@/lib/weekly-goal';
 
-const QUICK_PICKS = [30, 60, 120, 180, 240];
+const QUICK_PICKS = [300, 600, 900, 1200, 1800];
 
 export default function Goal() {
-  const duration = useDuration(getDailyGoal());
+  const duration = useDuration(getWeeklyGoal());
   const canSave = duration.total > 0;
 
   const save = () => {
     if (!canSave) return;
-    setDailyGoal(duration.total);
+    setWeeklyGoal(duration.total);
     router.back();
   };
 
@@ -29,9 +29,9 @@ export default function Goal() {
         </View>
 
         <View>
-          <Text style={styles.title}>Daily study goal</Text>
+          <Text style={styles.title}>Weekly study goal</Text>
           <Text style={styles.subtitle}>
-            How much do you want to study each day? Hearts fill in deep pink once you reach it.
+            How many hours do you want to study each week? Meet it to keep your streak going.
           </Text>
         </View>
 

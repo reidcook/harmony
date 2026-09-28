@@ -9,10 +9,10 @@ import { StatCard } from '@/components/stat-card';
 import { UpcomingsCard } from '@/components/upcomings-card';
 import { WeekHearts } from '@/components/week-hearts';
 import { Colors } from '@/constants/theme';
-import { useDailyGoal } from '@/hooks/use-daily-goal';
 import { useEncouragement } from '@/hooks/use-encouragement';
 import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
-import { computeStreak, minutesByDate } from '@/lib/study-sessions';
+import { useWeeklyGoal } from '@/hooks/use-weekly-goal';
+import { computeWeekStreak, minutesByDate, weekMinutes } from '@/lib/study-sessions';
 
 const toHours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
 
@@ -20,12 +20,12 @@ export default function Index() {
   const message = useEncouragement();
   const sessions = useStudySessions();
   const today = useToday();
-  const goal = useDailyGoal();
+  const goal = useWeeklyGoal();
 
   const totals = minutesByDate(sessions);
-  const todayMinutes = today ? (totals.get(today) ?? 0) : 0;
-  const streakDays = today ? computeStreak(totals, today) : 0;
-  const goalProgress = todayMinutes / goal;
+  const thisWeekMinutes = today ? weekMinutes(totals, today) : 0;
+  const streakWeeks = today ? computeWeekStreak(totals, today, goal) : 0;
+  const goalProgress = thisWeekMinutes / goal;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -33,17 +33,17 @@ export default function Index() {
         <HarmonyGreeting message={message} />
 
         <View style={styles.stats}>
-          <StatCard icon="🔥" value={`${streakDays}`} label="day streak" />
+          <StatCard icon="🔥" value={`${streakWeeks}`} label="week streak" />
           <StatCard
             icon="🎯"
             value={`${Math.round(goalProgress * 100)}%`}
-            label="of today's goal"
+            label="of this week's goal"
             onPress={() => router.push('/goal')}
-            accessibilityHint="Change your daily study goal">
+            accessibilityHint="Change your weekly study goal">
             <View style={styles.goalDetail}>
               <ProgressBar progress={goalProgress} />
               <Text style={styles.goalCaption}>
-                {toHours(todayMinutes)} / {toHours(goal)} hrs · tap to edit
+                {toHours(thisWeekMinutes)} / {toHours(goal)} hrs · tap to edit
               </Text>
             </View>
           </StatCard>
