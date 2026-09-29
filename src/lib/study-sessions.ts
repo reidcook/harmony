@@ -29,6 +29,8 @@ const store = createPersistedStore('harmony.sessions', EMPTY_SESSIONS, (stored) 
 
 export const subscribe = store.subscribe;
 export const getSessions = store.get;
+// Swaps in a whole list at once, for cloud sync and logout
+export const replaceSessions = store.set;
 
 export function addSession(input: SessionFields & { date?: string }) {
   const now = Date.now();

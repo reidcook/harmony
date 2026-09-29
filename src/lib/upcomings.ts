@@ -25,6 +25,8 @@ const store = createPersistedStore('harmony.upcomings', EMPTY_UPCOMINGS);
 
 export const subscribeUpcomings = store.subscribe;
 export const getUpcomings = store.get;
+// Swaps in a whole list at once, for cloud sync and logout
+export const replaceUpcomings = store.set;
 
 export function getUpcoming(id: string) {
   return getUpcomings().find((u) => u.id === id);

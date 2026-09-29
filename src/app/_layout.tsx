@@ -2,6 +2,8 @@ import { Stack } from 'expo-router';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+// Starts cloud sync (a no-op unless logged in)
+import '@/lib/sync';
 
 // On wide browser windows the app sits in a phone-width column instead of stretching edge to edge
 const MAX_WEB_WIDTH = 480;
@@ -17,6 +19,8 @@ export default function RootLayout() {
       <Stack.Screen name="add-upcoming" options={{ presentation: 'modal' }} />
       <Stack.Screen name="upcomings" options={{ presentation: 'modal' }} />
       <Stack.Screen name="upcoming/[id]" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="account" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
     </Stack>
   );
 
