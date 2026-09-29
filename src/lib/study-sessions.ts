@@ -150,6 +150,16 @@ export function minutesByDate(sessions: StudySession[]) {
   return totals;
 }
 
+// Twelve monthly totals (January first) for one year
+export function minutesByMonth(totals: Map<string, number>, year: number) {
+  const months: number[] = Array(12).fill(0);
+  const prefix = `${year}-`;
+  for (const [key, minutes] of totals) {
+    if (key.startsWith(prefix)) months[fromDateKey(key).getMonth()] += minutes;
+  }
+  return months;
+}
+
 // Total minutes in the Monday–Sunday week containing `dayKey`
 export function weekMinutes(totals: Map<string, number>, dayKey: string) {
   return getWeekDates(dayKey).reduce((sum, d) => sum + (totals.get(d) ?? 0), 0);

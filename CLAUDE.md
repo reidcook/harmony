@@ -5,7 +5,7 @@
 Harmony is a study-goal tracker for nursing students. Harmony, a pink nurse-heart at `assets/harmony/heartprogress.png`, encourages the user and shows their study streak and progress toward this week's goal.
 
 ### Current state
-- `src/app/index.tsx` is the home screen. It shows the mascot, an encouragement bubble, two stat cards (week streak, and `WeeklyGoalCard`, a `ProgressRing` with the percentage and hours inside), a week row of hearts (`WeekHearts`), the 3 soonest upcomings (`UpcomingsCard`), and a bottom-right "+" button that opens `src/app/add-session.tsx`.
+- `src/app/index.tsx` is the home screen. It shows the mascot, an encouragement bubble, two stat cards (week streak, and `WeeklyGoalCard`, a `ProgressRing` with the percentage and hours inside), a week row of hearts (`WeekHearts`), the 3 soonest upcomings (`UpcomingsCard`), a line chart of hours per month this year (`MonthlyHoursChart`, drawn with `react-native-svg`), and a bottom-right "+" button that opens `src/app/add-session.tsx`.
 - `src/app/day/[date].tsx` lists one day's sessions, and `src/app/calendar.tsx` shows a month of hearts plus that month's sessions, newest first. `_layout.tsx` presents every non-home screen as a modal.
 - All persisted data goes through `createPersistedStore(key, fallback)` in `src/lib/persisted-store.ts`, which gives a cached JSON value in `localStorage` that `useSyncExternalStore` can subscribe to. Build new stores on it.
 - Study sessions live in `src/lib/study-sessions.ts` (key `harmony.sessions`). Read them with `useStudySessions()` / `useToday()` from `src/hooks/use-study-sessions.ts`.
