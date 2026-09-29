@@ -15,6 +15,7 @@ export default function RootLayout() {
       <Stack.Screen name="calendar" options={{ presentation: 'modal' }} />
       <Stack.Screen name="goal" options={{ presentation: 'modal' }} />
       <Stack.Screen name="add-upcoming" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="upcomings" options={{ presentation: 'modal' }} />
       <Stack.Screen name="upcoming/[id]" options={{ presentation: 'modal' }} />
     </Stack>
   );
