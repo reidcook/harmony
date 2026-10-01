@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-// Starts cloud sync (a no-op unless logged in)
+// Loads the account on launch and return to the app (a no-op unless logged in)
 import '@/lib/sync';
 
 // On wide browser windows the app sits in a phone-width column instead of stretching edge to edge

@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +18,7 @@ import { DurationPicker, useDuration } from '@/components/duration-picker';
 import { Colors } from '@/constants/theme';
 import { useToday } from '@/hooks/use-study-sessions';
 import { useUpcomings } from '@/hooks/use-upcomings';
+import { describeError } from '@/lib/cloud';
 import { confirmDelete } from '@/lib/confirm';
 import {
   addSession,
@@ -53,8 +55,24 @@ export default function AddSession() {
   const toggleUpcoming = (id: string) =>
     setUpcomingIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
 
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const totalMinutes = duration.total;
-  const canSave = totalMinutes > 0;
+  const canSave = totalMinutes > 0 && !busy;
+
+  // Runs a save or delete; stays on this screen with an error if it doesn't go through
+  const run = async (task: () => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await task();
+      router.back();
+    } catch (e) {
+      setError(describeError(e));
+      setBusy(false);
+    }
+  };
 
   const save = () => {
     if (!canSave) return;
@@ -64,23 +82,17 @@ export default function AddSession() {
       description,
       upcomingIds: upcomingIds.filter((id) => upcomings.some((u) => u.id === id)),
     };
-    if (existing) {
-      updateSession(existing.id, fields);
-    } else {
-      addSession({ ...fields, date: params.date });
-    }
-    router.back();
+    void run(() =>
+      existing ? updateSession(existing.id, fields) : addSession({ ...fields, date: params.date })
+    );
   };
 
   const remove = () => {
-    if (!existing) return;
+    if (!existing || busy) return;
     confirmDelete(
       'Delete this session?',
       "It will be removed from your streak and goal. This can't be undone.",
-      () => {
-        removeSession(existing.id);
-        router.back();
-      }
+      () => void run(() => removeSession(existing.id))
     );
   };
 
@@ -145,6 +157,8 @@ export default function AddSession() {
             </View>
           )}
 
+          {error && <Text style={styles.error}>{error}</Text>}
+
           <Pressable
             onPress={save}
             disabled={!canSave}
@@ -153,14 +167,19 @@ export default function AddSession() {
               !canSave && styles.saveDisabled,
               pressed && styles.savePressed,
             ]}>
-            <Text style={styles.saveText}>
-              {canSave ? `Save ${formatMinutes(totalMinutes)}` : 'Save session'}
-            </Text>
+            {busy ? (
+              <ActivityIndicator color={Colors.card} />
+            ) : (
+              <Text style={styles.saveText}>
+                {canSave ? `Save ${formatMinutes(totalMinutes)}` : 'Save session'}
+              </Text>
+            )}
           </Pressable>
 
           {existing && (
             <Pressable
               onPress={remove}
+              disabled={busy}
               style={({ pressed }) => [styles.delete, pressed && styles.savePressed]}>
               <Text style={styles.deleteText}>Delete session</Text>
             </Pressable>
@@ -265,5 +284,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: Colors.card,
+  },
+  error: {
+    fontSize: 14,
+    color: Colors.danger,
   },
 });

@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +17,7 @@ import { Chip } from '@/components/chip';
 import { DatePicker } from '@/components/date-picker';
 import { Colors } from '@/constants/theme';
 import { useToday } from '@/hooks/use-study-sessions';
+import { describeError } from '@/lib/cloud';
 import { confirmDelete } from '@/lib/confirm';
 import {
   addUpcoming,
@@ -38,29 +40,44 @@ export default function AddUpcoming() {
   const [title, setTitle] = useState(existing?.title ?? '');
   const [date, setDate] = useState<string | null>(existing?.date ?? null);
 
-  const canSave = title.trim().length > 0 && date !== null;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSave = title.trim().length > 0 && date !== null && !busy;
+
+  // Runs a save or delete; stays on this screen with an error if it doesn't go through
+  const run = async (task: () => Promise<void>, done: () => void) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await task();
+      done();
+    } catch (e) {
+      setError(describeError(e));
+      setBusy(false);
+    }
+  };
 
   const save = () => {
     if (!canSave || !date) return;
     const fields = { type, title, date };
-    if (existing) {
-      updateUpcoming(existing.id, fields);
-    } else {
-      addUpcoming(fields);
-    }
-    router.back();
+    void run(
+      () => (existing ? updateUpcoming(existing.id, fields) : addUpcoming(fields)),
+      () => router.back()
+    );
   };
 
   const remove = () => {
-    if (!existing) return;
+    if (!existing || busy) return;
     confirmDelete(
       `Delete ${existing.title}?`,
       'Sessions you logged for it are kept. They just won’t be linked to it anymore.',
-      () => {
-        removeUpcoming(existing.id);
-        // Its detail page may be underneath, so go all the way home
-        router.dismissTo('/');
-      }
+      () =>
+        void run(
+          () => removeUpcoming(existing.id),
+          // Its detail page may be underneath, so go all the way home
+          () => router.dismissTo('/')
+        )
     );
   };
 
@@ -104,6 +121,8 @@ export default function AddUpcoming() {
             {today && <DatePicker value={date} onChange={setDate} today={today} />}
           </View>
 
+          {error && <Text style={styles.error}>{error}</Text>}
+
           <Pressable
             onPress={save}
             disabled={!canSave}
@@ -112,14 +131,19 @@ export default function AddUpcoming() {
               !canSave && styles.saveDisabled,
               pressed && styles.savePressed,
             ]}>
-            <Text style={styles.saveText}>
-              {existing ? 'Save changes' : `Add ${UPCOMING_TYPES[type].label.toLowerCase()}`}
-            </Text>
+            {busy ? (
+              <ActivityIndicator color={Colors.card} />
+            ) : (
+              <Text style={styles.saveText}>
+                {existing ? 'Save changes' : `Add ${UPCOMING_TYPES[type].label.toLowerCase()}`}
+              </Text>
+            )}
           </Pressable>
 
           {existing && (
             <Pressable
               onPress={remove}
+              disabled={busy}
               style={({ pressed }) => [styles.delete, pressed && styles.savePressed]}>
               <Text style={styles.deleteText}>Delete {UPCOMING_TYPES[type].label.toLowerCase()}</Text>
             </Pressable>
@@ -209,6 +233,10 @@ const styles = StyleSheet.create({
   deleteText: {
     fontSize: 16,
     fontWeight: '700',
+    color: Colors.danger,
+  },
+  error: {
+    fontSize: 14,
     color: Colors.danger,
   },
 });

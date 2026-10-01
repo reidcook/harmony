@@ -6,47 +6,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useAuthUser } from '@/hooks/use-auth-user';
-import { useSyncStatus } from '@/hooks/use-sync-status';
-import { confirmAction } from '@/lib/confirm';
 import { supabase } from '@/lib/supabase';
-import { flushBeforeLogout, logOutAndClear, syncNow } from '@/lib/sync';
-
-const formatTime = (ms: number) =>
-  new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+import { logOutAndClear } from '@/lib/sync';
 
 export default function Account() {
   const user = useAuthUser();
-  const status = useSyncStatus();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const logOut = async () => {
     setLoggingOut(true);
-    const unsynced = await flushBeforeLogout();
-    const finish = async () => {
-      await logOutAndClear();
-      router.back();
-    };
-    if (unsynced === 0) {
-      await finish();
-      return;
-    }
-    setLoggingOut(false);
-    confirmAction(
-      'Log out without backing up?',
-      'Some recent changes haven’t reached your account yet and will be lost. Connect to the internet first to keep them.',
-      'Log out',
-      () => void finish()
-    );
+    await logOutAndClear();
+    router.back();
   };
-
-  const statusText =
-    status.state === 'syncing'
-      ? 'Backing up…'
-      : status.state === 'error'
-        ? 'Couldn’t reach the server. Changes are saved on this phone and will upload later.'
-        : status.lastSyncedAt
-          ? `Backed up at ${formatTime(status.lastSyncedAt)}`
-          : 'Backed up to your account';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -79,27 +50,12 @@ export default function Account() {
           <>
             <View style={[styles.card, styles.statusCard]}>
               <SymbolView
-                name={
-                  status.state === 'error'
-                    ? { ios: 'icloud.slash', android: 'cloud_off', web: 'cloud_off' }
-                    : { ios: 'checkmark.icloud', android: 'cloud_done', web: 'cloud_done' }
-                }
-                tintColor={status.state === 'error' ? Colors.textMuted : Colors.accentDeep}
+                name={{ ios: 'checkmark.icloud', android: 'cloud_done', web: 'cloud_done' }}
+                tintColor={Colors.accentDeep}
                 size={24}
               />
-              <Text style={styles.statusText}>{statusText}</Text>
+              <Text style={styles.statusText}>Your progress is saved to your account.</Text>
             </View>
-
-            <Pressable
-              onPress={() => void syncNow()}
-              disabled={status.state === 'syncing'}
-              style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
-              {status.state === 'syncing' ? (
-                <ActivityIndicator color={Colors.accentDeep} />
-              ) : (
-                <Text style={styles.secondaryText}>Sync now</Text>
-              )}
-            </Pressable>
 
             <Pressable
               onPress={logOut}
@@ -197,17 +153,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: Colors.card,
-  },
-  secondary: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: Colors.track,
-  },
-  secondaryText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.accentDeep,
   },
   logOut: {
     alignItems: 'center',

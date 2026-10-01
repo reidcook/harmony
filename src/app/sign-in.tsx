@@ -15,22 +15,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
-import { sendCode, verifyCode } from '@/lib/auth';
-import { finishLogin, prepareLogin } from '@/lib/sync';
+import { sendCode } from '@/lib/auth';
+import { describeError } from '@/lib/cloud';
+import { logIn } from '@/lib/sync';
 
 const RESEND_SECONDS = 60;
 const MIN_CODE_LENGTH = 6;
 
 const looksLikeEmail = (text: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text);
-
-function describeError(error: unknown) {
-  const { message = '', code = '' } = (error ?? {}) as { message?: string; code?: string };
-  if (code === 'otp_expired' || /token|otp/i.test(message)) {
-    return 'That code is wrong or has expired. Try again or send a new one.';
-  }
-  if (/network|fetch/i.test(message)) return 'Couldn’t connect. Check your internet and try again.';
-  return message || 'Something went wrong. Please try again.';
-}
 
 // Logs in with an emailed code. Opened with ?welcome=1 on first launch, where it can be skipped.
 export default function SignIn() {
@@ -75,10 +67,7 @@ export default function SignIn() {
     setBusy(true);
     setError(null);
     try {
-      // Queue this phone's data first so the first sync can't drop it
-      prepareLogin();
-      await verifyCode(trimmedEmail, code);
-      await finishLogin();
+      await logIn(trimmedEmail, code);
       router.back();
     } catch (e) {
       setError(describeError(e));
