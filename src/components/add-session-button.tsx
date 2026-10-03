@@ -4,22 +4,30 @@ import { Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
+import { useStudyTimer } from '@/hooks/use-study-timer';
+import { isTimerStarted } from '@/lib/study-timer';
 
+// Opens the study timer. Shows a timer instead of "+" while one is going.
 export function AddSessionButton() {
   const insets = useSafeAreaInsets();
+  const timing = isTimerStarted(useStudyTimer());
 
   return (
     <Pressable
-      onPress={() => router.push('/add-session')}
+      onPress={() => router.push('/timer')}
       style={({ pressed }) => [
         styles.button,
         { right: 20 + insets.right, bottom: 20 + insets.bottom },
         pressed && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel="Log a study session">
+      accessibilityLabel={timing ? 'Open the study timer' : 'Start a study session'}>
       <SymbolView
-        name={{ ios: 'plus', android: 'add', web: 'add' }}
+        name={
+          timing
+            ? { ios: 'timer', android: 'timer', web: 'timer' }
+            : { ios: 'plus', android: 'add', web: 'add' }
+        }
         tintColor={Colors.card}
         size={30}
       />

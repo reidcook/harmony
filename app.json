@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "harmony",
+    "name": "Study with Harmony",
     "slug": "harmony",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/haromny/study-with-harmony-icon.png",
     "scheme": "harmony",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.reidcook.harmony"
+      "icon": "./assets/haromny/study-with-harmony-icon.png",
+      "bundleIdentifier": "club.romega.harmony"
     },
     "android": {
       "adaptiveIcon": {

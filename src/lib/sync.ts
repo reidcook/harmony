@@ -10,6 +10,7 @@ import {
   saveUpcomingsToCloud,
 } from '@/lib/cloud';
 import { getSessions, replaceSessions } from '@/lib/study-sessions';
+import { resetTimer } from '@/lib/study-timer';
 import { supabase } from '@/lib/supabase';
 import { getUpcomings, replaceUpcomings } from '@/lib/upcomings';
 import { getWeeklyGoal, replaceWeeklyGoal } from '@/lib/weekly-goal';
@@ -59,6 +60,7 @@ export async function logOutAndClear() {
   replaceSessions([]);
   replaceUpcomings([]);
   replaceWeeklyGoal(DEFAULT_WEEKLY_GOAL_MINUTES);
+  resetTimer();
 }
 
 // A login saved from an earlier launch loads once restored, and again whenever the app comes back
