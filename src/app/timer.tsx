@@ -33,11 +33,11 @@ export default function Timer() {
 
   const status = running ? 'Studying…' : started ? 'Paused' : 'Ready when you are';
 
-  const stop = () =>
+  const discard = () =>
     confirmAction(
-      'Stop this timer?',
+      'Discard this timer?',
       "The time so far won't be logged.",
-      'Stop',
+      'Discard',
       resetTimer
     );
 
@@ -89,10 +89,10 @@ export default function Timer() {
                 onPress={running ? pauseTimer : startTimer}
               />
               <ControlButton
-                label="Stop"
-                icon={{ ios: 'stop.fill', android: 'stop', web: 'stop' }}
+                label="Discard"
+                icon={{ ios: 'trash', android: 'delete', web: 'delete' }}
                 color={Colors.danger}
-                onPress={stop}
+                onPress={discard}
               />
             </View>
 
