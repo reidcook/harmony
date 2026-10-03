@@ -12,6 +12,7 @@ export default function RootLayout() {
   const stack = (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
+      <Stack.Screen name="timer" options={{ presentation: 'modal' }} />
       <Stack.Screen name="add-session" options={{ presentation: 'modal' }} />
       <Stack.Screen name="day/[date]" options={{ presentation: 'modal' }} />
       <Stack.Screen name="calendar" options={{ presentation: 'modal' }} />

@@ -30,18 +30,27 @@ import {
   SESSION_LOCK_MESSAGE,
   updateSession,
 } from '@/lib/study-sessions';
+import { resetTimer } from '@/lib/study-timer';
 import { nextUpcomings, UPCOMING_TYPES } from '@/lib/upcomings';
 
 const QUICK_PICKS = [15, 30, 60, 120];
 
 // Logs a new session (today, or ?date=YYYY-MM-DD), or edits an existing one when opened with ?id=.
 // ?upcomingId= preselects a quiz/exam/final it's for. A session can be for several.
+// ?fromTimer=1&minutes= logs the study timer's time, and saving clears the timer.
 export default function AddSession() {
-  const params = useLocalSearchParams<{ id?: string; date?: string; upcomingId?: string }>();
+  const params = useLocalSearchParams<{
+    id?: string;
+    date?: string;
+    upcomingId?: string;
+    minutes?: string;
+    fromTimer?: string;
+  }>();
   const existing = params.id ? getSession(params.id) : undefined;
   const sessionDate = existing?.date ?? params.date;
+  const fromTimer = params.fromTimer === '1';
 
-  const duration = useDuration(existing?.minutes);
+  const duration = useDuration(existing?.minutes ?? (Number(params.minutes) || undefined));
   const [description, setDescription] = useState(existing?.description ?? '');
   const [upcomingIds, setUpcomingIds] = useState<string[]>(
     existing ? existing.upcomingIds : params.upcomingId ? [params.upcomingId] : []
@@ -71,7 +80,13 @@ export default function AddSession() {
     setError(null);
     try {
       await task();
-      router.back();
+      if (fromTimer) {
+        resetTimer();
+        // Back home, past the timer screen
+        router.dismissAll();
+      } else {
+        router.back();
+      }
     } catch (e) {
       setError(describeError(e));
       setBusy(false);
@@ -114,7 +129,11 @@ export default function AddSession() {
 
           <View>
             <Text style={styles.title}>
-              {existing ? 'Edit study session' : 'Log a study session'}
+              {existing
+                ? 'Edit study session'
+                : fromTimer
+                  ? 'Nice work! Log your session'
+                  : 'Log a study session'}
             </Text>
             {sessionDate && <Text style={styles.subtitle}>{formatDayHeading(sessionDate)}</Text>}
           </View>
