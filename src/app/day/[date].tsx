@@ -4,13 +4,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DayHeart } from '@/components/day-heart';
 import { Colors } from '@/constants/theme';
-import { useStudySessions } from '@/hooks/use-study-sessions';
+import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
 import { useUpcomings } from '@/hooks/use-upcomings';
-import { formatDayHeading, formatMinutes, toDateKey } from '@/lib/study-sessions';
+import {
+  canChangeSessionOn,
+  formatDayHeading,
+  formatMinutes,
+  SESSION_LOCK_MESSAGE,
+  toDateKey,
+} from '@/lib/study-sessions';
 import { UPCOMING_TYPES } from '@/lib/upcomings';
 
 export default function DaySessions() {
   const { date } = useLocalSearchParams<{ date: string }>();
+  const today = useToday();
+  // Sessions on older days can't be added, edited, or deleted
+  const editable = !!today && canChangeSessionOn(date, today);
   const sessions = useStudySessions()
     .filter((s) => s.date === date)
     .sort((a, b) => a.createdAt - b.createdAt);
@@ -34,12 +43,16 @@ export default function DaySessions() {
           <Text style={styles.summary}>{formatMinutes(total)} studied</Text>
         </View>
 
-        <Pressable
-          onPress={() => router.push({ pathname: '/add-session', params: { date } })}
-          style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-          accessibilityRole="button">
-          <Text style={styles.addButtonText}>+ Add session to this day</Text>
-        </Pressable>
+        {editable ? (
+          <Pressable
+            onPress={() => router.push({ pathname: '/add-session', params: { date } })}
+            style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
+            accessibilityRole="button">
+            <Text style={styles.addButtonText}>+ Add session to this day</Text>
+          </Pressable>
+        ) : (
+          today && <Text style={styles.lockNote}>{SESSION_LOCK_MESSAGE}</Text>
+        )}
 
         {sessions.length === 0 ? (
           <Text style={styles.empty}>No study sessions this day.</Text>
@@ -49,6 +62,7 @@ export default function DaySessions() {
             return (
               <Pressable
                 key={session.id}
+                disabled={!editable}
                 onPress={() =>
                   router.push({ pathname: '/add-session', params: { id: session.id } })
                 }
@@ -79,7 +93,7 @@ export default function DaySessions() {
                     ))}
                   </View>
                 )}
-                <Text style={styles.editHint}>Tap to edit or delete</Text>
+                {editable && <Text style={styles.editHint}>Tap to edit or delete</Text>}
               </Pressable>
             );
           })
@@ -146,6 +160,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.accentDeep,
     backgroundColor: Colors.track,
+  },
+  lockNote: {
+    textAlign: 'center',
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   editHint: {
     fontSize: 12,

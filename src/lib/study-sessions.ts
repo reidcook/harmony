@@ -129,6 +129,15 @@ function addDays(key: string, days: number) {
   return toDateKey(date);
 }
 
+// Sessions can be added, edited, or deleted only on today or up to this many days back
+export const MAX_DAYS_BACK = 2;
+
+export const SESSION_LOCK_MESSAGE = `Sessions can only be added or changed for today and the ${MAX_DAYS_BACK} days before.`;
+
+export function canChangeSessionOn(dateKey: string, todayKey: string) {
+  return dateKey <= todayKey && dateKey >= addDays(todayKey, -MAX_DAYS_BACK);
+}
+
 // Monday through Sunday of the week containing `todayKey`
 export function getWeekDates(todayKey: string) {
   const mondayOffset = (fromDateKey(todayKey).getDay() + 6) % 7;

@@ -22,10 +22,12 @@ import { describeError } from '@/lib/cloud';
 import { confirmDelete } from '@/lib/confirm';
 import {
   addSession,
+  canChangeSessionOn,
   formatDayHeading,
   formatMinutes,
   getSession,
   removeSession,
+  SESSION_LOCK_MESSAGE,
   updateSession,
 } from '@/lib/study-sessions';
 import { nextUpcomings, UPCOMING_TYPES } from '@/lib/upcomings';
@@ -59,7 +61,9 @@ export default function AddSession() {
   const [error, setError] = useState<string | null>(null);
 
   const totalMinutes = duration.total;
-  const canSave = totalMinutes > 0 && !busy;
+  // Sessions on older days can't be added, edited, or deleted
+  const tooOld = !!sessionDate && !!today && !canChangeSessionOn(sessionDate, today);
+  const canSave = totalMinutes > 0 && !busy && !tooOld;
 
   // Runs a save or delete; stays on this screen with an error if it doesn't go through
   const run = async (task: () => Promise<void>) => {
@@ -88,7 +92,7 @@ export default function AddSession() {
   };
 
   const remove = () => {
-    if (!existing || busy) return;
+    if (!existing || busy || tooOld) return;
     confirmDelete(
       'Delete this session?',
       "It will be removed from your streak and goal. This can't be undone.",
@@ -157,6 +161,7 @@ export default function AddSession() {
             </View>
           )}
 
+          {tooOld && <Text style={styles.error}>{SESSION_LOCK_MESSAGE}</Text>}
           {error && <Text style={styles.error}>{error}</Text>}
 
           <Pressable
@@ -179,8 +184,12 @@ export default function AddSession() {
           {existing && (
             <Pressable
               onPress={remove}
-              disabled={busy}
-              style={({ pressed }) => [styles.delete, pressed && styles.savePressed]}>
+              disabled={busy || tooOld}
+              style={({ pressed }) => [
+                styles.delete,
+                tooOld && styles.saveDisabled,
+                pressed && styles.savePressed,
+              ]}>
               <Text style={styles.deleteText}>Delete session</Text>
             </Pressable>
           )}

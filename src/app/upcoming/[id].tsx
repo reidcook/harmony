@@ -7,6 +7,7 @@ import { Colors } from '@/constants/theme';
 import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
 import { useUpcomings } from '@/hooks/use-upcomings';
 import {
+  canChangeSessionOn,
   daysUntil,
   formatDayHeading,
   formatDaysAway,
@@ -73,6 +74,8 @@ export default function UpcomingDetail() {
               sessions.map((session) => (
                 <Pressable
                   key={session.id}
+                  // Sessions on older days are locked
+                  disabled={!today || !canChangeSessionOn(session.date, today)}
                   onPress={() =>
                     router.push({ pathname: '/add-session', params: { id: session.id } })
                   }

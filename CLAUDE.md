@@ -18,6 +18,7 @@ Harmony is a study-goal tracker for nursing students. Harmony, a pink nurse-hear
   - **Schema**: `supabase/migrations/0001_init.sql`, with tables `users` (`weekly_goal_minutes`), `sessions`, and `upcomings`, keyed by `(user_id, id)` with the app's text ids, and RLS on. Row mapping lives in `sync.ts`. New synced data needs a column there as well as in the local type.
 - On native, `localStorage` comes from the `expo-sqlite/localStorage/install` polyfill, imported only in `src/lib/install-local-storage.ts`. The `.web.ts` twin is empty because importing expo-sqlite on web breaks bundling ("Worker chunk not found").
 - There is only a weekly goal (no daily goal). It is saved in `localStorage` under `harmony.weeklyGoalMinutes` by `src/lib/weekly-goal.ts`, and the default is `DEFAULT_WEEKLY_GOAL_MINUTES`. Read it with `useWeeklyGoal()`. Tapping the goal card opens `src/app/goal.tsx` to change it. Weeks run Monday to Sunday (`getWeekDates`, `weekMinutes`). The streak (`computeWeekStreak`) counts consecutive weeks that met the goal. The current week doesn't break it until it's over.
+- Sessions can only be added, edited, or deleted on today or the `MAX_DAYS_BACK` (2) days before (`canChangeSessionOn` in `study-sessions.ts`). Older sessions show in lists but can't be tapped, and `add-session.tsx` disables Save/Delete for them.
 - Hearts (`DayHeart`) don't depend on the goal. They're pale for no study, `accent` pink for under 1 hour, and `heartStrong` (deeper and about 15% larger, in a fixed slot) for 1 hour or more.
 
 ### Conventions
