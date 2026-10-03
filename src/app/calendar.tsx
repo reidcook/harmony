@@ -9,12 +9,14 @@ import { Colors } from '@/constants/theme';
 import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
 import { useUpcomings } from '@/hooks/use-upcomings';
 import {
+  canChangeSessionOn,
   formatDayHeading,
   formatMinutes,
   fromDateKey,
   getMonthGrid,
   minutesByDate,
   MONTHS,
+  SESSION_LOCK_MESSAGE,
   type StudySession,
   toDateKey,
 } from '@/lib/study-sessions';
@@ -27,6 +29,8 @@ export default function Calendar() {
   const sessions = useStudySessions();
   // Months back from the current one; 0 is this month
   const [monthsBack, setMonthsBack] = useState(0);
+  // The day whose sessions are listed; null lists the whole month
+  const [selected, setSelected] = useState<string | null>(null);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -43,8 +47,16 @@ export default function Calendar() {
             today={today}
             sessions={sessions}
             monthsBack={monthsBack}
-            onPrev={() => setMonthsBack((n) => n + 1)}
-            onNext={() => setMonthsBack((n) => Math.max(0, n - 1))}
+            selected={selected}
+            onSelect={setSelected}
+            onPrev={() => {
+              setSelected(null);
+              setMonthsBack((n) => n + 1);
+            }}
+            onNext={() => {
+              setSelected(null);
+              setMonthsBack((n) => Math.max(0, n - 1));
+            }}
           />
         )}
       </ScrollView>
@@ -56,11 +68,13 @@ type MonthProps = {
   today: string;
   sessions: StudySession[];
   monthsBack: number;
+  selected: string | null;
+  onSelect: (date: string | null) => void;
   onPrev: () => void;
   onNext: () => void;
 };
 
-function Month({ today, sessions, monthsBack, onPrev, onNext }: MonthProps) {
+function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext }: MonthProps) {
   const now = fromDateKey(today);
   const shown = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
   const cells = getMonthGrid(shown.getFullYear(), shown.getMonth());
@@ -72,6 +86,11 @@ function Month({ today, sessions, monthsBack, onPrev, onNext }: MonthProps) {
   const monthSessions = sessions
     .filter((s) => s.date.startsWith(monthPrefix))
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
+  const canAdd = !selected || canChangeSessionOn(selected, today);
+  // A day's sessions read in the order they were logged
+  const listed = selected
+    ? monthSessions.filter((s) => s.date === selected).reverse()
+    : monthSessions;
 
   const monthDates = cells.filter((d): d is string => d !== null);
   const daysStudied = monthDates.filter((d) => (totals.get(d) ?? 0) > 0).length;
@@ -126,20 +145,24 @@ function Month({ today, sessions, monthsBack, onPrev, onNext }: MonthProps) {
 
             const isToday = date === today;
             const isFuture = date > today;
+            const isSelected = date === selected;
             return (
               <Pressable
                 key={date}
                 disabled={isFuture}
-                onPress={() => router.push({ pathname: '/day/[date]', params: { date } })}
+                // Tapping the selected day again goes back to the whole month
+                onPress={() => onSelect(isSelected ? null : date)}
                 style={({ pressed }) => [
                   styles.cell,
                   styles.day,
                   isToday && styles.today,
+                  isSelected && styles.selectedDay,
                   isFuture && styles.disabled,
                   pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`View study sessions for ${date}`}>
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={`Show study sessions for ${formatDayHeading(date)}`}>
                 <Text style={[styles.dayNumber, isToday && styles.todayNumber]}>
                   {fromDateKey(date).getDate()}
                 </Text>
@@ -157,15 +180,43 @@ function Month({ today, sessions, monthsBack, onPrev, onNext }: MonthProps) {
         </Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Sessions</Text>
-      {monthSessions.length === 0 ? (
-        <Text style={styles.empty}>No study sessions this month.</Text>
-      ) : (
-        monthSessions.map((session) => {
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle} numberOfLines={1}>
+          {selected ? formatDayHeading(selected) : 'Sessions'}
+        </Text>
+        <Pressable
+          // Logs to the selected day, or to today when the whole month is showing
+          onPress={() =>
+            router.push(
+              selected ? { pathname: '/add-session', params: { date: selected } } : '/add-session'
+            )
+          }
+          disabled={!canAdd}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.addButton,
+            !canAdd && styles.disabled,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canAdd }}
+          accessibilityLabel={selected ? 'Add a session to this day' : 'Add a session'}>
+          <SymbolView
+            name={{ ios: 'plus', android: 'add', web: 'add' }}
+            tintColor={Colors.card}
+            size={20}
+          />
+        </Pressable>
+      </View>
+      {!canAdd && <Text style={styles.addLimit}>{SESSION_LOCK_MESSAGE}</Text>}
+
+      {listed.map((session) => {
           const linked = upcomings.filter((u) => session.upcomingIds.includes(u.id));
           return (
             <Pressable
               key={session.id}
+              // Sessions on older days are locked
+              disabled={!canChangeSessionOn(session.date, today)}
               onPress={() =>
                 router.push({ pathname: '/add-session', params: { id: session.id } })
               }
@@ -191,6 +242,15 @@ function Month({ today, sessions, monthsBack, onPrev, onNext }: MonthProps) {
             </Pressable>
           );
         })
+      }
+
+      {selected && (
+        <View style={[styles.card, styles.dayTotal]}>
+          <DayHeart minutes={totals.get(selected) ?? 0} size={26} />
+          <Text style={styles.summary}>
+            {formatMinutes(totals.get(selected) ?? 0)} studied this day
+          </Text>
+        </View>
       )}
     </>
   );
@@ -251,8 +311,11 @@ const styles = StyleSheet.create({
   },
   day: {
     gap: 2,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 12,
+    // Always there so selecting a day doesn't shift the grid
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   today: {
     backgroundColor: Colors.background,
@@ -260,6 +323,9 @@ const styles = StyleSheet.create({
   dayNumber: {
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  selectedDay: {
+    borderColor: Colors.accentDeep,
   },
   todayNumber: {
     fontWeight: '800',
@@ -277,11 +343,37 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: Colors.text,
   },
-  sectionTitle: {
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
     marginTop: 8,
+  },
+  sectionTitle: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: '800',
     color: Colors.text,
+  },
+  addLimit: {
+    marginTop: -8,
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  addButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.accentDeep,
+  },
+  dayTotal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
   empty: {
     textAlign: 'center',

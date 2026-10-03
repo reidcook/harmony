@@ -1,6 +1,6 @@
 export const ENCOURAGEMENTS = [
   "Find the harmony in studying 💕",
-  "Future you will be so greatful. Let's study 🔮",
+  "Future you will be so grateful. Let's study 🔮",
   "Every step matters 🪜",
   "Any patient would be lucky to have you 🍀",
   "The NCLEX don't stand a chance 💀",

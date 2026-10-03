@@ -2,6 +2,10 @@ import '@/lib/install-local-storage';
 
 // A JSON value kept in localStorage, cached in memory, and observable for useSyncExternalStore.
 // get() returns the same reference until set() is called. `migrate` upgrades older saved shapes on load.
+
+// Returns a subscription that adds the caller to a list of listeners
+// A get which pulls all items back from the cache
+// A set which sets the local storage, and calls the functions stored in the listeners list
 export function createPersistedStore<T>(
   key: string,
   fallback: T,

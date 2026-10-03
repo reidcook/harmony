@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Your Harmony sign-in code</title>
+</head>
+<body style="margin:0; padding:0; background-color:#FFF5F8;">
+  <!-- Preview text shown in inbox lists -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">
+    Your Harmony sign-in code is {{ .Token }}
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFF5F8;">
+    <tr>
+      <td align="center" style="padding:40px 16px;">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+
+          <!-- Wordmark -->
+          <tr>
+            <td style="padding:0 8px 20px 8px; font-family:Georgia, 'Times New Roman', serif; font-size:24px; color:#E0679A;">
+              Harmony
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background-color:#FFFFFF; border-radius:14px; border:1px solid #FCE4EE; padding:36px 32px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#3A2A33;">
+
+              <p style="margin:0 0 8px 0; font-size:20px; line-height:28px; font-weight:600;">
+                Here's your sign-in code
+              </p>
+              <p style="margin:0 0 28px 0; font-size:15px; line-height:23px; color:#8A7580;">
+                Enter this code in Harmony to finish signing in.
+              </p>
+
+              <!-- Code -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" style="background-color:#FCE4EE; border-radius:10px; padding:22px 12px;">
+                    <span style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:36px; line-height:40px; font-weight:700; letter-spacing:10px; color:#C94F85;">
+                      {{ .Token }}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:28px 0 0 0; font-size:14px; line-height:21px; color:#8A7580;">
+                This code expires in 1 hour and can only be used once.
+              </p>
+              <p style="margin:12px 0 0 0; font-size:14px; line-height:21px; color:#8A7580;">
+                If you didn't try to sign in to Harmony, you can ignore this email. Your account is safe.
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 8px 0 8px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:12px; line-height:18px; color:#8A7580;">
+              Sent to {{ .Email }} by Harmony.
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

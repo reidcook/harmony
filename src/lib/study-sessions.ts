@@ -1,3 +1,4 @@
+import { deleteSessionFromCloud, saveSessionsToCloud } from '@/lib/cloud';
 import { createPersistedStore, newId } from '@/lib/persisted-store';
 
 export type StudySession = {
@@ -29,54 +30,59 @@ const store = createPersistedStore('harmony.sessions', EMPTY_SESSIONS, (stored) 
 
 export const subscribe = store.subscribe;
 export const getSessions = store.get;
+// Swaps in a whole list at once, for loading from the account and logout. Not saved to the cloud.
+export const replaceSessions = store.set;
 
-export function addSession(input: SessionFields & { date?: string }) {
+// Changes save to the account first (while logged in) and only reach this phone if that works
+
+export async function addSession(input: SessionFields & { date?: string }) {
   const now = Date.now();
-  store.set([
-    ...getSessions(),
-    {
-      id: newId(),
-      date: input.date ?? toDateKey(new Date(now)),
-      minutes: input.minutes,
-      description: input.description.trim(),
-      createdAt: now,
-      upcomingIds: input.upcomingIds,
-    },
-  ]);
+  const session: StudySession = {
+    id: newId(),
+    date: input.date ?? toDateKey(new Date(now)),
+    minutes: input.minutes,
+    description: input.description.trim(),
+    createdAt: now,
+    upcomingIds: input.upcomingIds,
+  };
+  await saveSessionsToCloud([session]);
+  store.set([...getSessions(), session]);
 }
 
 export function getSession(id: string) {
   return getSessions().find((s) => s.id === id);
 }
 
-export function updateSession(id: string, changes: SessionFields) {
-  store.set(
-    getSessions().map((s) =>
-      s.id === id
-        ? {
-            ...s,
-            minutes: changes.minutes,
-            description: changes.description.trim(),
-            upcomingIds: changes.upcomingIds,
-          }
-        : s
-    )
-  );
+export async function updateSession(id: string, changes: SessionFields) {
+  const existing = getSession(id);
+  if (!existing) return;
+  const updated: StudySession = {
+    ...existing,
+    minutes: changes.minutes,
+    description: changes.description.trim(),
+    upcomingIds: changes.upcomingIds,
+  };
+  await saveSessionsToCloud([updated]);
+  store.set(getSessions().map((s) => (s.id === id ? updated : s)));
 }
 
-export function removeSession(id: string) {
+export async function removeSession(id: string) {
+  await deleteSessionFromCloud(id);
   store.set(getSessions().filter((s) => s.id !== id));
 }
 
-// Keeps the sessions (and their time) but drops the link to a deleted upcoming
-export function unlinkUpcoming(upcomingId: string) {
-  store.set(
-    getSessions().map((s) =>
-      s.upcomingIds.includes(upcomingId)
-        ? { ...s, upcomingIds: s.upcomingIds.filter((id) => id !== upcomingId) }
-        : s
-    )
-  );
+// The sessions linked to a deleted upcoming, with the link dropped (their time is kept)
+export function withoutUpcoming(upcomingId: string) {
+  return getSessions()
+    .filter((s) => s.upcomingIds.includes(upcomingId))
+    .map((s) => ({ ...s, upcomingIds: s.upcomingIds.filter((id) => id !== upcomingId) }));
+}
+
+// Swaps already-saved versions of some sessions into the list
+export function replaceSomeSessions(changed: StudySession[]) {
+  if (changed.length === 0) return;
+  const byId = new Map(changed.map((s) => [s.id, s]));
+  store.set(getSessions().map((s) => byId.get(s.id) ?? s));
 }
 
 export function toDateKey(date: Date) {
@@ -121,6 +127,15 @@ function addDays(key: string, days: number) {
   const date = fromDateKey(key);
   date.setDate(date.getDate() + days);
   return toDateKey(date);
+}
+
+// Sessions can be added, edited, or deleted only on today or up to this many days back
+export const MAX_DAYS_BACK = 2;
+
+export const SESSION_LOCK_MESSAGE = `Sessions can only be added or changed for today and the ${MAX_DAYS_BACK} days before.`;
+
+export function canChangeSessionOn(dateKey: string, todayKey: string) {
+  return dateKey <= todayKey && dateKey >= addDays(todayKey, -MAX_DAYS_BACK);
 }
 
 // Monday through Sunday of the week containing `todayKey`

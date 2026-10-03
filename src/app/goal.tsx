@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DurationPicker, useDuration } from '@/components/duration-picker';
 import { Colors } from '@/constants/theme';
+import { describeError } from '@/lib/cloud';
 import { formatMinutes } from '@/lib/study-sessions';
 import { getWeeklyGoal, setWeeklyGoal } from '@/lib/weekly-goal';
 
@@ -11,12 +13,22 @@ const QUICK_PICKS = [300, 600, 900, 1200, 1800];
 
 export default function Goal() {
   const duration = useDuration(getWeeklyGoal());
-  const canSave = duration.total > 0;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const canSave = duration.total > 0 && !busy;
 
-  const save = () => {
+  // Stays on this screen with an error if the save doesn't go through
+  const save = async () => {
     if (!canSave) return;
-    setWeeklyGoal(duration.total);
-    router.back();
+    setBusy(true);
+    setError(null);
+    try {
+      await setWeeklyGoal(duration.total);
+      router.back();
+    } catch (e) {
+      setError(describeError(e));
+      setBusy(false);
+    }
   };
 
   return (
@@ -39,6 +51,8 @@ export default function Goal() {
           <DurationPicker duration={duration} quickPicks={QUICK_PICKS} />
         </View>
 
+        {error && <Text style={styles.error}>{error}</Text>}
+
         <Pressable
           onPress={save}
           disabled={!canSave}
@@ -47,9 +61,13 @@ export default function Goal() {
             !canSave && styles.saveDisabled,
             pressed && styles.savePressed,
           ]}>
-          <Text style={styles.saveText}>
-            {canSave ? `Set goal to ${formatMinutes(duration.total)}` : 'Set goal'}
-          </Text>
+          {busy ? (
+            <ActivityIndicator color={Colors.card} />
+          ) : (
+            <Text style={styles.saveText}>
+              {canSave ? `Set goal to ${formatMinutes(duration.total)}` : 'Set goal'}
+            </Text>
+          )}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -108,5 +126,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: Colors.card,
+  },
+  error: {
+    fontSize: 14,
+    color: Colors.danger,
   },
 });
