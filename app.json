@@ -4,12 +4,15 @@
     "slug": "harmony",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/haromny/study-with-harmony-icon.png",
+    "icon": "./assets/harmony/study-with-harmony-icon.png",
     "scheme": "harmony",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/haromny/study-with-harmony-icon.png",
-      "bundleIdentifier": "club.romega.harmony"
+      "icon": "./assets/harmony/study-with-harmony-icon.png",
+      "bundleIdentifier": "club.romega.harmony",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -39,6 +42,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9a562c1a-d1ed-4cf2-9dd4-1004b6259942"
+      }
     }
   }
 }
