@@ -5,14 +5,32 @@ import { getAuthUser, signOut, verifyCode } from '@/lib/auth';
 import {
   fetchAccountData,
   getCloudWriteCount,
+  saveEquippedToCloud,
   saveGoalToCloud,
+  savePurchasesToCloud,
+  saveRewardsToCloud,
   saveSessionsToCloud,
   saveUpcomingsToCloud,
 } from '@/lib/cloud';
+import {
+  awardRewards,
+  clearPendingRewards,
+  EMPTY_REWARDS,
+  getRewards,
+  replaceRewards,
+} from '@/lib/rewards';
 import { getSessions, replaceSessions } from '@/lib/study-sessions';
 import { resetTimer } from '@/lib/study-timer';
 import { supabase } from '@/lib/supabase';
 import { getUpcomings, replaceUpcomings } from '@/lib/upcomings';
+import {
+  EMPTY_EQUIPPED,
+  EMPTY_PURCHASES,
+  getEquipped,
+  getPurchases,
+  replaceEquipped,
+  replacePurchases,
+} from '@/lib/wardrobe';
 import { getWeeklyGoal, replaceWeeklyGoal } from '@/lib/weekly-goal';
 
 // While logged in, the account is the real data and local storage is a copy the app reads,
@@ -29,10 +47,16 @@ export async function refreshFromCloud() {
     if (!data || getCloudWriteCount() !== writesBefore) return;
     replaceSessions(data.sessions);
     replaceUpcomings(data.upcomings);
+    replaceRewards(data.rewards);
+    replacePurchases(data.purchases);
+    replaceEquipped(data.equipped);
     if (data.goal) replaceWeeklyGoal(data.goal);
   } catch (error) {
     console.warn('Harmony couldn’t load your account', error);
+    return;
   }
+  // Sessions from another device may have earned something
+  await awardRewards();
 }
 
 // Logs in and uploads everything on this phone to the account, then loads the account.
@@ -43,9 +67,12 @@ export async function logIn(email: string, code: string) {
     const data = await fetchAccountData();
     await saveSessionsToCloud(getSessions());
     await saveUpcomingsToCloud(getUpcomings());
-    // A brand-new account takes this phone's goal; an existing one keeps its own
+    await saveRewardsToCloud(getRewards());
+    await savePurchasesToCloud(getPurchases());
+    // A brand-new account takes this phone's goal and outfit; an existing one keeps its own
     if (data && data.sessions.length === 0 && data.upcomings.length === 0) {
       await saveGoalToCloud(getWeeklyGoal());
+      await saveEquippedToCloud(getEquipped());
     }
   } catch (error) {
     await signOut();
@@ -60,6 +87,10 @@ export async function logOutAndClear() {
   replaceSessions([]);
   replaceUpcomings([]);
   replaceWeeklyGoal(DEFAULT_WEEKLY_GOAL_MINUTES);
+  replaceRewards(EMPTY_REWARDS);
+  clearPendingRewards();
+  replacePurchases(EMPTY_PURCHASES);
+  replaceEquipped(EMPTY_EQUIPPED);
   resetTimer();
 }
 

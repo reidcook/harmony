@@ -123,7 +123,7 @@ export function formatDaysAway(days: number) {
   return `in ${days} days`;
 }
 
-function addDays(key: string, days: number) {
+export function addDays(key: string, days: number) {
   const date = fromDateKey(key);
   date.setDate(date.getDate() + days);
   return toDateKey(date);

@@ -1,7 +1,9 @@
 import { getAuthUser } from '@/lib/auth';
+import type { Reward, RewardKind } from '@/lib/rewards';
 import type { StudySession } from '@/lib/study-sessions';
 import { supabase } from '@/lib/supabase';
 import type { Upcoming, UpcomingType } from '@/lib/upcomings';
+import type { Equipped, Purchase } from '@/lib/wardrobe';
 
 // Supabase reads and writes. While logged in, every save goes here first and only reaches
 // local storage if it succeeds. Each write does nothing when logged out, and throws on failure.
@@ -23,6 +25,23 @@ type UpcomingRow = {
   title: string;
   date: string;
   created_at: string;
+};
+
+type RewardRow = {
+  user_id: string;
+  id: string;
+  kind: RewardKind;
+  date: string;
+  points: number;
+  goal: number | null;
+  earned_at: string;
+};
+
+type PurchaseRow = {
+  user_id: string;
+  item_id: string;
+  price: number;
+  purchased_at: string;
 };
 
 const sessionToRow = (s: StudySession, userId: string): SessionRow => ({
@@ -59,6 +78,38 @@ const rowToUpcoming = (r: UpcomingRow): Upcoming => ({
   title: r.title,
   date: r.date,
   createdAt: Date.parse(r.created_at),
+});
+
+const rewardToRow = (r: Reward, userId: string): RewardRow => ({
+  user_id: userId,
+  id: r.id,
+  kind: r.kind,
+  date: r.date,
+  points: r.points,
+  goal: r.goal ?? null,
+  earned_at: new Date(r.earnedAt).toISOString(),
+});
+
+const rowToReward = (r: RewardRow): Reward => ({
+  id: r.id,
+  kind: r.kind,
+  date: r.date,
+  points: r.points,
+  ...(r.goal === null ? {} : { goal: r.goal }),
+  earnedAt: Date.parse(r.earned_at),
+});
+
+const purchaseToRow = (p: Purchase, userId: string): PurchaseRow => ({
+  user_id: userId,
+  item_id: p.itemId,
+  price: p.price,
+  purchased_at: new Date(p.purchasedAt).toISOString(),
+});
+
+const rowToPurchase = (r: PurchaseRow): Purchase => ({
+  itemId: r.item_id,
+  price: r.price,
+  purchasedAt: Date.parse(r.purchased_at),
 });
 
 function check<T extends { error: unknown }>(result: T) {
@@ -119,19 +170,50 @@ export async function saveGoalToCloud(minutes: number) {
   );
 }
 
+// Rewards and purchases are only ever added; one already in the account is left as it is
+
+export async function saveRewardsToCloud(rewards: Reward[]) {
+  if (rewards.length === 0) return;
+  await write((db, userId) =>
+    db.from('rewards').upsert(
+      rewards.map((r) => rewardToRow(r, userId)),
+      { onConflict: 'user_id,id', ignoreDuplicates: true }
+    )
+  );
+}
+
+export async function savePurchasesToCloud(purchases: Purchase[]) {
+  if (purchases.length === 0) return;
+  await write((db, userId) =>
+    db.from('purchases').upsert(
+      purchases.map((p) => purchaseToRow(p, userId)),
+      { onConflict: 'user_id,item_id', ignoreDuplicates: true }
+    )
+  );
+}
+
+export async function saveEquippedToCloud(equipped: Equipped) {
+  await write((db, userId) => db.from('users').update({ equipped }).eq('id', userId));
+}
+
 // Everything in the account; null when logged out
 export async function fetchAccountData() {
   const user = getAuthUser();
   if (!supabase || !user) return null;
-  const [sessions, upcomings, profile] = await Promise.all([
+  const [sessions, upcomings, rewards, purchases, profile] = await Promise.all([
     supabase.from('sessions').select('*').eq('user_id', user.id),
     supabase.from('upcomings').select('*').eq('user_id', user.id),
-    supabase.from('users').select('weekly_goal_minutes').eq('id', user.id).maybeSingle(),
+    supabase.from('rewards').select('*').eq('user_id', user.id),
+    supabase.from('purchases').select('*').eq('user_id', user.id),
+    supabase.from('users').select('weekly_goal_minutes, equipped').eq('id', user.id).maybeSingle(),
   ]);
   return {
     sessions: (check(sessions).data as SessionRow[]).map(rowToSession),
     upcomings: (check(upcomings).data as UpcomingRow[]).map(rowToUpcoming),
+    rewards: (check(rewards).data as RewardRow[]).map(rowToReward),
+    purchases: (check(purchases).data as PurchaseRow[]).map(rowToPurchase),
     goal: check(profile).data?.weekly_goal_minutes as number | undefined,
+    equipped: (check(profile).data?.equipped ?? {}) as Equipped,
   };
 }
 
