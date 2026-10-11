@@ -52,6 +52,22 @@ export const COSMETICS: Cosmetic[] = [
     name: 'Stethoscope',
     slot: 'hat',
     image: require('@/assets/harmony/cosmetics/hat/stethoscope.png'),
+    price: 100,
+  },
+
+  {
+    id: 'badge',
+    name: 'Badge',
+    slot: 'hat',
+    image: require('@/assets/harmony/cosmetics/hat/badge.png'),
+    price: 100,
+  },
+
+  {
+    id: 'eye-mask',
+    name: 'Eye Mask',
+    slot: 'hat',
+    image: require('@/assets/harmony/cosmetics/hat/eye-mask.png'),
     price: 50,
   },
 
