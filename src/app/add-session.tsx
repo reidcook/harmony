@@ -20,6 +20,7 @@ import { useToday } from '@/hooks/use-study-sessions';
 import { useUpcomings } from '@/hooks/use-upcomings';
 import { describeError } from '@/lib/cloud';
 import { confirmDelete } from '@/lib/confirm';
+import { awardRewards } from '@/lib/rewards';
 import {
   addSession,
   canChangeSessionOn,
@@ -80,6 +81,8 @@ export default function AddSession() {
     setError(null);
     try {
       await task();
+      // Harmony celebrates on the home screen if this earned anything
+      void awardRewards();
       if (fromTimer) {
         resetTimer();
         // Back home, past the timer screen

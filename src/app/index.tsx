@@ -6,7 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AccountButton } from '@/components/account-button';
 import { AddSessionButton } from '@/components/add-session-button';
 import { HarmonyGreeting } from '@/components/harmony-greeting';
+import { HeartsButton } from '@/components/hearts-button';
 import { MonthlyHoursChart } from '@/components/monthly-hours-chart';
+import { RewardCelebration } from '@/components/reward-celebration';
 import { StatCard } from '@/components/stat-card';
 import { UpcomingsCard } from '@/components/upcomings-card';
 import { WeekHearts } from '@/components/week-hearts';
@@ -44,6 +46,11 @@ export default function Index() {
         <View style={styles.accountButton}>
           <AccountButton />
         </View>
+        <View style={styles.heartsButton}>
+          <HeartsButton />
+        </View>
+
+        <RewardCelebration />
 
         <View style={styles.stats}>
           <StatCard value={`${streakWeeks}`} label="week streak" />
@@ -77,6 +84,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     left: 16,
+  },
+  // Top-right corner, opposite the account button
+  heartsButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
   },
   stats: {
     flexDirection: 'row',

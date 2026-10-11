@@ -4,8 +4,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DurationPicker, useDuration } from '@/components/duration-picker';
+import { MIN_REWARD_GOAL_MINUTES } from '@/constants/rewards';
 import { Colors } from '@/constants/theme';
 import { describeError } from '@/lib/cloud';
+import { awardRewards } from '@/lib/rewards';
 import { formatMinutes } from '@/lib/study-sessions';
 import { getWeeklyGoal, setWeeklyGoal } from '@/lib/weekly-goal';
 
@@ -24,6 +26,8 @@ export default function Goal() {
     setError(null);
     try {
       await setWeeklyGoal(duration.total);
+      // A lower goal may already be met this week
+      void awardRewards();
       router.back();
     } catch (e) {
       setError(describeError(e));
@@ -50,6 +54,13 @@ export default function Goal() {
         <View style={styles.card}>
           <DurationPicker duration={duration} quickPicks={QUICK_PICKS} />
         </View>
+
+        {duration.total > 0 && duration.total < MIN_REWARD_GOAL_MINUTES && (
+          <Text style={styles.hint}>
+            Goals under {formatMinutes(MIN_REWARD_GOAL_MINUTES)} still count for your streak, but
+            don’t earn hearts.
+          </Text>
+        )}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -126,6 +137,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: Colors.card,
+  },
+  hint: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.textMuted,
   },
   error: {
     fontSize: 14,

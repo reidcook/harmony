@@ -1,14 +1,19 @@
-import { Image } from 'expo-image';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { HarmonyAvatar } from '@/components/harmony-avatar';
 import { Colors } from '@/constants/theme';
+import { useEquipped } from '@/hooks/use-wardrobe';
 
 type Props = {
   message: string;
 };
 
+const MASCOT_SIZE = 180;
+
 export function HarmonyGreeting({ message }: Props) {
+  const equipped = useEquipped();
+
   return (
     <View style={styles.container}>
       <View style={styles.stage}>
@@ -20,12 +25,7 @@ export function HarmonyGreeting({ message }: Props) {
         </Animated.View>
         <Animated.View style={animations.float}>
           <Animated.View style={animations.sway}>
-            <Image
-              source={require('@/assets/harmony/heartprogress.png')}
-              style={styles.mascot}
-              contentFit="contain"
-              accessibilityLabel="Harmony, a pink heart wearing a nurse's cap"
-            />
+            <HarmonyAvatar equipped={equipped} size={MASCOT_SIZE} />
           </Animated.View>
         </Animated.View>
       </View>
@@ -123,10 +123,6 @@ const styles = StyleSheet.create({
   groundShadowGradient: gradient(
     'radial-gradient(ellipse closest-side, rgba(224, 103, 154, 0.35) 0%, rgba(224, 103, 154, 0) 100%)'
   ),
-  mascot: {
-    width: 180,
-    height: 180,
-  },
   bubble: {
     alignSelf: 'stretch',
     gap: 4,
