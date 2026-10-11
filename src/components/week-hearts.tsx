@@ -4,6 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DayHeart } from '@/components/day-heart';
 import { Colors } from '@/constants/theme';
+import { useClinicals } from '@/hooks/use-clinicals';
+import { clinicalDates } from '@/lib/clinicals';
 import { getWeekDates } from '@/lib/study-sessions';
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -15,6 +17,8 @@ type Props = {
 
 export function WeekHearts({ today, totals }: Props) {
   const week = today ? getWeekDates(today) : null;
+  const clinicalDays = clinicalDates(useClinicals());
+  const hasClinical = (date: string | undefined) => !!date && clinicalDays.has(date);
 
   return (
     <Pressable
@@ -56,7 +60,15 @@ export function WeekHearts({ today, totals }: Props) {
               ]}
               accessibilityRole="button"
               accessibilityLabel={date ? `View study sessions for ${date}` : undefined}>
-              <DayHeart minutes={minutes} size={30} />
+              <View>
+                <DayHeart minutes={minutes} size={30} />
+                {/* Tucked against the heart's lower right, so it takes no room in the row */}
+                {hasClinical(date) && (
+                  <Text style={styles.clinical} accessibilityLabel="Clinical">
+                    🩺
+                  </Text>
+                )}
+              </View>
               <Text style={[styles.letter, isToday && styles.todayLetter]}>{letter}</Text>
             </Pressable>
           );
@@ -113,6 +125,13 @@ const styles = StyleSheet.create({
   letter: {
     fontSize: 12,
     color: Colors.textMuted,
+  },
+  clinical: {
+    position: 'absolute',
+    right: -7,
+    bottom: -2,
+    fontSize: 11,
+    lineHeight: 13,
   },
   todayLetter: {
     fontWeight: '800',

@@ -4,10 +4,14 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ClinicalRow } from '@/components/clinical-row';
 import { DayHeart } from '@/components/day-heart';
+import { UpcomingRow } from '@/components/upcoming-row';
 import { Colors } from '@/constants/theme';
+import { useClinicalLocations, useClinicals } from '@/hooks/use-clinicals';
 import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
 import { useUpcomings } from '@/hooks/use-upcomings';
+import { clinicalDates } from '@/lib/clinicals';
 import {
   canChangeSessionOn,
   formatDayHeading,
@@ -24,13 +28,27 @@ import { UPCOMING_TYPES } from '@/lib/upcomings';
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+type Tab = 'sessions' | 'upcomings' | 'clinicals';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'sessions', label: 'Study' },
+  { key: 'upcomings', label: 'Assessments' },
+  { key: 'clinicals', label: 'Clinicals' },
+];
+
 export default function Calendar() {
   const today = useToday();
   const sessions = useStudySessions();
-  // Months back from the current one; 0 is this month
-  const [monthsBack, setMonthsBack] = useState(0);
-  // The day whose sessions are listed; null lists the whole month
+  // Months from the current one; 0 is this month, negative is earlier
+  const [monthOffset, setMonthOffset] = useState(0);
+  // The day whose items are listed; null lists the whole month
   const [selected, setSelected] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('sessions');
+
+  const changeMonth = (delta: number) => {
+    setSelected(null);
+    setMonthOffset((n) => n + delta);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -46,17 +64,13 @@ export default function Calendar() {
           <Month
             today={today}
             sessions={sessions}
-            monthsBack={monthsBack}
+            monthOffset={monthOffset}
             selected={selected}
+            tab={tab}
             onSelect={setSelected}
-            onPrev={() => {
-              setSelected(null);
-              setMonthsBack((n) => n + 1);
-            }}
-            onNext={() => {
-              setSelected(null);
-              setMonthsBack((n) => Math.max(0, n - 1));
-            }}
+            onTab={setTab}
+            onPrev={() => changeMonth(-1)}
+            onNext={() => changeMonth(1)}
           />
         )}
       </ScrollView>
@@ -67,34 +81,107 @@ export default function Calendar() {
 type MonthProps = {
   today: string;
   sessions: StudySession[];
-  monthsBack: number;
+  monthOffset: number;
   selected: string | null;
+  tab: Tab;
   onSelect: (date: string | null) => void;
+  onTab: (tab: Tab) => void;
   onPrev: () => void;
   onNext: () => void;
 };
 
-function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext }: MonthProps) {
+function Month({
+  today,
+  sessions,
+  monthOffset,
+  selected,
+  tab,
+  onSelect,
+  onTab,
+  onPrev,
+  onNext,
+}: MonthProps) {
   const now = fromDateKey(today);
-  const shown = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+  const shown = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
   const cells = getMonthGrid(shown.getFullYear(), shown.getMonth());
   const totals = minutesByDate(sessions);
   const upcomings = useUpcomings();
+  const clinicals = useClinicals();
+  const locations = useClinicalLocations();
+  const clinicalDays = clinicalDates(clinicals);
 
-  // Date keys are YYYY-MM-DD, so the month prefix picks out this month's sessions
+  // Date keys are YYYY-MM-DD, so the month prefix picks out this month's items.
+  // A selected day narrows each list to that day.
   const monthPrefix = toDateKey(shown).slice(0, 7);
+  const inView = (date: string) => (selected ? date === selected : date.startsWith(monthPrefix));
+
   const monthSessions = sessions
     .filter((s) => s.date.startsWith(monthPrefix))
     .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt);
-  const canAdd = !selected || canChangeSessionOn(selected, today);
   // A day's sessions read in the order they were logged
-  const listed = selected
+  const listedSessions = selected
     ? monthSessions.filter((s) => s.date === selected).reverse()
     : monthSessions;
+
+  // Assessments and clinicals read in date order, like a schedule
+  const listedUpcomings = upcomings
+    .filter((u) => inView(u.date))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
+  const listedClinicals = clinicals
+    .filter((c) => inView(c.date))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt);
 
   const monthDates = cells.filter((d): d is string => d !== null);
   const daysStudied = monthDates.filter((d) => (totals.get(d) ?? 0) > 0).length;
   const monthMinutes = monthDates.reduce((sum, d) => sum + (totals.get(d) ?? 0), 0);
+  const monthClinicals = clinicals.filter((c) => c.date.startsWith(monthPrefix));
+  const monthClinicalMinutes = monthClinicals.reduce((sum, c) => sum + (c.minutes ?? 0), 0);
+  const monthUpcomingCount = upcomings.filter((u) => u.date.startsWith(monthPrefix)).length;
+
+  const canAddSession = !selected || canChangeSessionOn(selected, today);
+  const canAdd = tab !== 'sessions' || canAddSession;
+
+  // Adds to the selected day when there is one
+  const add = () => {
+    if (tab === 'sessions') {
+      router.push(
+        selected ? { pathname: '/add-session', params: { date: selected } } : '/add-session'
+      );
+    } else if (tab === 'upcomings') {
+      // Assessments are only scheduled from today on
+      router.push(
+        selected && selected >= today
+          ? { pathname: '/add-upcoming', params: { date: selected } }
+          : '/add-upcoming'
+      );
+    } else {
+      router.push(
+        selected ? { pathname: '/add-clinical', params: { date: selected } } : '/add-clinical'
+      );
+    }
+  };
+
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const summary =
+    tab === 'sessions'
+      ? `${plural(daysStudied, 'day', 'days')} studied · ${formatMinutes(monthMinutes)} total`
+      : tab === 'upcomings'
+        ? `${plural(monthUpcomingCount, 'assessment', 'assessments')} this month`
+        : `${plural(monthClinicals.length, 'clinical', 'clinicals')}` +
+          (monthClinicalMinutes > 0 ? ` · ${formatMinutes(monthClinicalMinutes)}` : '');
+
+  const emptyText =
+    tab === 'sessions'
+      ? 'No study sessions.'
+      : tab === 'upcomings'
+        ? 'No quizzes, exams, or finals.'
+        : 'No clinicals.';
+  const isEmpty =
+    tab === 'sessions'
+      ? listedSessions.length === 0
+      : tab === 'upcomings'
+        ? listedUpcomings.length === 0
+        : listedClinicals.length === 0;
 
   return (
     <>
@@ -116,13 +203,8 @@ function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext
         </Text>
         <Pressable
           onPress={onNext}
-          disabled={monthsBack === 0}
           hitSlop={10}
-          style={({ pressed }) => [
-            styles.navButton,
-            monthsBack === 0 && styles.disabled,
-            pressed && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel="Next month">
           <SymbolView
@@ -146,10 +228,10 @@ function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext
             const isToday = date === today;
             const isFuture = date > today;
             const isSelected = date === selected;
+            const hasClinical = clinicalDays.has(date);
             return (
               <Pressable
                 key={date}
-                disabled={isFuture}
                 // Tapping the selected day again goes back to the whole month
                 onPress={() => onSelect(isSelected ? null : date)}
                 style={({ pressed }) => [
@@ -157,40 +239,56 @@ function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext
                   styles.day,
                   isToday && styles.today,
                   isSelected && styles.selectedDay,
-                  isFuture && styles.disabled,
                   pressed && styles.pressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
-                accessibilityLabel={`Show study sessions for ${formatDayHeading(date)}`}>
-                <Text style={[styles.dayNumber, isToday && styles.todayNumber]}>
+                accessibilityLabel={`Show ${formatDayHeading(date)}${hasClinical ? ', has a clinical' : ''}`}>
+                <Text
+                  style={[
+                    styles.dayNumber,
+                    isFuture && styles.futureNumber,
+                    isToday && styles.todayNumber,
+                  ]}>
                   {fromDateKey(date).getDate()}
                 </Text>
-                <DayHeart minutes={totals.get(date) ?? 0} size={22} />
+                <View style={isFuture && styles.futureHeart}>
+                  <DayHeart minutes={totals.get(date) ?? 0} size={22} />
+                </View>
+                {/* Always takes its space so every row is the same height */}
+                <Text style={styles.clinicalMark}>{hasClinical ? '🩺' : ' '}</Text>
               </Pressable>
             );
           })}
         </View>
       </View>
 
+      <View style={styles.tabs} accessibilityRole="tablist">
+        {TABS.map(({ key, label }) => {
+          const active = key === tab;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => onTab(key)}
+              style={[styles.tab, active && styles.activeTab]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}>
+              <Text style={[styles.tabText, active && styles.activeTabText]}>{label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <View style={styles.card}>
-        <Text style={styles.summary}>
-          {daysStudied} {daysStudied === 1 ? 'day' : 'days'} studied ·{' '}
-          {formatMinutes(monthMinutes)} total
-        </Text>
+        <Text style={styles.summary}>{summary}</Text>
       </View>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle} numberOfLines={1}>
-          {selected ? formatDayHeading(selected) : 'Sessions'}
+          {selected ? formatDayHeading(selected) : TABS.find((t) => t.key === tab)?.label}
         </Text>
         <Pressable
-          // Logs to the selected day, or to today when the whole month is showing
-          onPress={() =>
-            router.push(
-              selected ? { pathname: '/add-session', params: { date: selected } } : '/add-session'
-            )
-          }
+          onPress={add}
           disabled={!canAdd}
           hitSlop={10}
           style={({ pressed }) => [
@@ -200,7 +298,13 @@ function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext
           ]}
           accessibilityRole="button"
           accessibilityState={{ disabled: !canAdd }}
-          accessibilityLabel={selected ? 'Add a session to this day' : 'Add a session'}>
+          accessibilityLabel={
+            tab === 'sessions'
+              ? 'Add a session'
+              : tab === 'upcomings'
+                ? 'Add a quiz, exam, or final'
+                : 'Add a clinical'
+          }>
           <SymbolView
             name={{ ios: 'plus', android: 'add', web: 'add' }}
             tintColor={Colors.card}
@@ -210,7 +314,10 @@ function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext
       </View>
       {!canAdd && <Text style={styles.addLimit}>{SESSION_LOCK_MESSAGE}</Text>}
 
-      {listed.map((session) => {
+      {isEmpty && <Text style={styles.empty}>{emptyText}</Text>}
+
+      {tab === 'sessions' &&
+        listedSessions.map((session) => {
           const linked = upcomings.filter((u) => session.upcomingIds.includes(u.id));
           return (
             <Pressable
@@ -241,10 +348,30 @@ function Month({ today, sessions, monthsBack, selected, onSelect, onPrev, onNext
               )}
             </Pressable>
           );
-        })
-      }
+        })}
 
-      {selected && (
+      {tab === 'upcomings' && listedUpcomings.length > 0 && (
+        <View style={[styles.card, styles.rows]}>
+          {listedUpcomings.map((upcoming) => (
+            <UpcomingRow key={upcoming.id} upcoming={upcoming} today={today} />
+          ))}
+        </View>
+      )}
+
+      {tab === 'clinicals' && listedClinicals.length > 0 && (
+        <View style={[styles.card, styles.rows]}>
+          {listedClinicals.map((clinical) => (
+            <ClinicalRow
+              key={clinical.id}
+              clinical={clinical}
+              location={locations.find((l) => l.id === clinical.locationId)}
+              today={today}
+            />
+          ))}
+        </View>
+      )}
+
+      {tab === 'sessions' && selected && (
         <View style={[styles.card, styles.dayTotal]}>
           <DayHeart minutes={totals.get(selected) ?? 0} size={26} />
           <Text style={styles.summary}>
@@ -324,6 +451,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
   },
+  // Future days can be opened for their schedule, but look quieter
+  futureNumber: {
+    opacity: 0.5,
+  },
+  futureHeart: {
+    opacity: 0.4,
+  },
+  clinicalMark: {
+    fontSize: 10,
+    lineHeight: 12,
+  },
   selectedDay: {
     borderColor: Colors.accentDeep,
   },
@@ -336,6 +474,31 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.6,
+  },
+  tabs: {
+    flexDirection: 'row',
+    padding: 4,
+    gap: 4,
+    borderRadius: 14,
+    backgroundColor: Colors.track,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  activeTab: {
+    backgroundColor: Colors.card,
+    boxShadow: '0 2px 6px rgba(224, 103, 154, 0.2)',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  activeTabText: {
+    color: Colors.accentDeep,
   },
   summary: {
     fontSize: 15,
@@ -373,6 +536,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+  },
+  rows: {
     gap: 10,
   },
   empty: {

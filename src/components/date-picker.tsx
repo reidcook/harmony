@@ -11,6 +11,8 @@ type Props = {
   value: string | null;
   onChange: (date: string) => void;
   today: string;
+  // Lets any past day be picked too
+  allowPast?: boolean;
 };
 
 const monthIndex = (key: string) => {
@@ -18,8 +20,8 @@ const monthIndex = (key: string) => {
   return d.getFullYear() * 12 + d.getMonth();
 };
 
-// Inline month grid for picking today or a future day
-export function DatePicker({ value, onChange, today }: Props) {
+// Inline month grid for picking today or a future day (or any day, with allowPast)
+export function DatePicker({ value, onChange, today, allowPast = false }: Props) {
   // An already-chosen past date (when editing) stays reachable
   const earliest = value && value < today ? value : today;
   const [shownIndex, setShownIndex] = useState(monthIndex(value ?? today));
@@ -27,7 +29,7 @@ export function DatePicker({ value, onChange, today }: Props) {
   const year = Math.floor(shownIndex / 12);
   const month = shownIndex % 12;
   const cells = getMonthGrid(year, month);
-  const canGoBack = shownIndex > monthIndex(earliest);
+  const canGoBack = allowPast || shownIndex > monthIndex(earliest);
 
   return (
     <View style={styles.container}>
@@ -72,7 +74,7 @@ export function DatePicker({ value, onChange, today }: Props) {
           if (!date) return <View key={`blank-${i}`} style={styles.cell} />;
 
           const selected = date === value;
-          const disabled = date < today && !selected;
+          const disabled = !allowPast && date < today && !selected;
           return (
             <View key={date} style={styles.cell}>
               <Pressable

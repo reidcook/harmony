@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AccountButton } from '@/components/account-button';
 import { AddSessionButton } from '@/components/add-session-button';
+import { ClinicalsCard } from '@/components/clinicals-card';
 import { HarmonyGreeting } from '@/components/harmony-greeting';
 import { HeartsButton } from '@/components/hearts-button';
 import { MonthlyHoursChart } from '@/components/monthly-hours-chart';
@@ -62,6 +63,8 @@ export default function Index() {
         <UpcomingsCard today={today} />
 
         <MonthlyHoursChart today={today} totals={totals} />
+
+        <ClinicalsCard today={today} />
       </ScrollView>
       <AddSessionButton />
     </SafeAreaView>
