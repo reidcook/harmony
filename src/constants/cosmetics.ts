@@ -72,6 +72,14 @@ export const COSMETICS: Cosmetic[] = [
     price: 100,
   },
 
+  {
+    id: 'blood-pressure-cuff',
+    name: 'Blood Pressure Cuff',
+    slot: 'held',
+    image: require('@/assets/harmony/cosmetics/held/blood-pressure-cuff.png'),
+    price: 100,
+  },
+
   // Backgrounds
   {
     id: 'background-sun',
