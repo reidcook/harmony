@@ -7,14 +7,12 @@ export type ClinicalLocationType = 'hospital' | 'longTermCare' | 'outpatient';
 export type ClinicalLocation = {
   id: string;
   name: string;
-  description: string;
   type: ClinicalLocationType | null;
   createdAt: number;
 };
 
 type ClinicalLocationFields = {
   name: string;
-  description: string;
   type: ClinicalLocationType | null;
 };
 
@@ -55,7 +53,6 @@ export function takeJustAddedLocationId() {
 const tidy = (fields: ClinicalLocationFields) => ({
   ...fields,
   name: fields.name.trim(),
-  description: fields.description.trim(),
 });
 
 // Changes save to the account first (while logged in) and only reach this phone if that works

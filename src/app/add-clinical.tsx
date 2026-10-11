@@ -24,13 +24,14 @@ import {
   sortLocations,
   takeJustAddedLocationId,
 } from '@/lib/clinical-locations';
-import { addClinical, getClinical, removeClinical, updateClinical } from '@/lib/clinicals';
+import { addClinicals, getClinical, removeClinical, updateClinical } from '@/lib/clinicals';
 import { describeError } from '@/lib/cloud';
 import { confirmDelete } from '@/lib/confirm';
 
 const QUICK_PICKS = [240, 480, 600, 720];
 
-// Adds a clinical (on ?date=YYYY-MM-DD if given), or edits one when opened with ?id=.
+// Adds clinicals on one or more days (starting with ?date=YYYY-MM-DD if given), all sharing the
+// same location, time, and notes. Opened with ?id=, it edits that one clinical and its single day.
 // Its hours are kept apart from study time and never count toward goals or rewards.
 export default function AddClinical() {
   const params = useLocalSearchParams<{ id?: string; date?: string }>();
@@ -39,7 +40,17 @@ export default function AddClinical() {
   const locations = sortLocations(useClinicalLocations());
 
   const [locationId, setLocationId] = useState<string | null>(existing?.locationId ?? null);
-  const [date, setDate] = useState<string | null>(existing?.date ?? params.date ?? null);
+  const initialDate = existing?.date ?? params.date;
+  const [dates, setDates] = useState<string[]>(initialDate ? [initialDate] : []);
+  // A new clinical toggles days on and off; an existing one just moves to the tapped day
+  const pickDate = (date: string) =>
+    setDates((current) =>
+      existing
+        ? [date]
+        : current.includes(date)
+          ? current.filter((d) => d !== date)
+          : [...current, date].sort()
+    );
   const duration = useDuration(existing?.minutes ?? undefined);
   const [description, setDescription] = useState(existing?.description ?? '');
 
@@ -56,7 +67,7 @@ export default function AddClinical() {
 
   // A location deleted while this screen was open no longer counts as chosen
   const hasLocation = locationId !== null && locations.some((l) => l.id === locationId);
-  const canSave = hasLocation && date !== null && !busy;
+  const canSave = hasLocation && dates.length > 0 && !busy;
 
   // Runs a save or delete; stays on this screen with an error if it doesn't go through
   const run = async (task: () => Promise<void>) => {
@@ -72,14 +83,17 @@ export default function AddClinical() {
   };
 
   const save = () => {
-    if (!canSave || !date || !locationId) return;
+    if (!canSave || !locationId) return;
     const fields = {
-      date,
       locationId,
       minutes: duration.total > 0 ? duration.total : null,
       description,
     };
-    void run(() => (existing ? updateClinical(existing.id, fields) : addClinical(fields)));
+    void run(() =>
+      existing
+        ? updateClinical(existing.id, { ...fields, date: dates[0] })
+        : addClinicals(dates, fields)
+    );
   };
 
   const remove = () => {
@@ -132,8 +146,23 @@ export default function AddClinical() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.label}>When is it?</Text>
-            {today && <DatePicker value={date} onChange={setDate} today={today} allowPast />}
+            <Text style={styles.label}>{existing ? 'When is it?' : 'Which days?'}</Text>
+            {!existing && (
+              <Text style={styles.hint}>
+                {dates.length === 0
+                  ? 'Tap every day this clinical meets.'
+                  : `${dates.length} ${dates.length === 1 ? 'day' : 'days'} selected. Tap a day again to remove it.`}
+              </Text>
+            )}
+            {today && (
+              <DatePicker
+                value={dates[0] ?? null}
+                selectedDates={dates}
+                onChange={pickDate}
+                today={today}
+                allowPast
+              />
+            )}
           </View>
 
           <View style={styles.card}>
@@ -166,7 +195,13 @@ export default function AddClinical() {
             {busy ? (
               <ActivityIndicator color={Colors.card} />
             ) : (
-              <Text style={styles.saveText}>{existing ? 'Save changes' : 'Add clinical'}</Text>
+              <Text style={styles.saveText}>
+                {existing
+                  ? 'Save changes'
+                  : dates.length > 1
+                    ? `Add ${dates.length} clinicals`
+                    : 'Add clinical'}
+              </Text>
             )}
           </Pressable>
 
@@ -225,6 +260,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  hint: {
+    marginTop: -6,
+    fontSize: 13,
+    color: Colors.textMuted,
   },
   editLocation: {
     fontSize: 13,

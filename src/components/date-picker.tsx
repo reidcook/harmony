@@ -13,6 +13,8 @@ type Props = {
   today: string;
   // Lets any past day be picked too
   allowPast?: boolean;
+  // Highlights several days instead of just `value`; the parent toggles them in onChange
+  selectedDates?: string[];
 };
 
 const monthIndex = (key: string) => {
@@ -21,7 +23,7 @@ const monthIndex = (key: string) => {
 };
 
 // Inline month grid for picking today or a future day (or any day, with allowPast)
-export function DatePicker({ value, onChange, today, allowPast = false }: Props) {
+export function DatePicker({ value, onChange, today, allowPast = false, selectedDates }: Props) {
   // An already-chosen past date (when editing) stays reachable
   const earliest = value && value < today ? value : today;
   const [shownIndex, setShownIndex] = useState(monthIndex(value ?? today));
@@ -73,7 +75,7 @@ export function DatePicker({ value, onChange, today, allowPast = false }: Props)
         {cells.map((date, i) => {
           if (!date) return <View key={`blank-${i}`} style={styles.cell} />;
 
-          const selected = date === value;
+          const selected = selectedDates ? selectedDates.includes(date) : date === value;
           const disabled = !allowPast && date < today && !selected;
           return (
             <View key={date} style={styles.cell}>

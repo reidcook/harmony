@@ -32,8 +32,8 @@ type UpcomingRow = {
 type ClinicalLocationRow = {
   user_id: string;
   id: string;
+  // The table also has a description column, which the app doesn't use
   name: string;
-  description: string;
   type: ClinicalLocationType | null;
   created_at: string;
 };
@@ -105,7 +105,6 @@ const clinicalLocationToRow = (l: ClinicalLocation, userId: string): ClinicalLoc
   user_id: userId,
   id: l.id,
   name: l.name,
-  description: l.description,
   type: l.type,
   created_at: new Date(l.createdAt).toISOString(),
 });
@@ -113,7 +112,6 @@ const clinicalLocationToRow = (l: ClinicalLocation, userId: string): ClinicalLoc
 const rowToClinicalLocation = (r: ClinicalLocationRow): ClinicalLocation => ({
   id: r.id,
   name: r.name,
-  description: r.description,
   type: r.type,
   createdAt: Date.parse(r.created_at),
 });

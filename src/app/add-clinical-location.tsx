@@ -36,7 +36,6 @@ export default function AddClinicalLocation() {
   const inUse = useClinicals().some((c) => c.locationId === existing?.id);
 
   const [name, setName] = useState(existing?.name ?? '');
-  const [description, setDescription] = useState(existing?.description ?? '');
   const [type, setType] = useState<ClinicalLocationType | null>(existing?.type ?? null);
 
   const [busy, setBusy] = useState(false);
@@ -59,7 +58,7 @@ export default function AddClinicalLocation() {
 
   const save = () => {
     if (!canSave) return;
-    const fields = { name, description, type };
+    const fields = { name, type };
     void run(() =>
       existing ? updateClinicalLocation(existing.id, fields) : addClinicalLocation(fields)
     );
@@ -110,18 +109,6 @@ export default function AddClinicalLocation() {
                 />
               ))}
             </View>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.label}>Description (optional)</Text>
-            <TextInput
-              value={description}
-              onChangeText={setDescription}
-              placeholder="e.g. Parking garage B, badge in at the east entrance"
-              placeholderTextColor={Colors.textMuted}
-              style={[styles.input, styles.multiline]}
-              multiline
-            />
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -216,10 +203,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     borderWidth: 1,
     borderColor: Colors.track,
-  },
-  multiline: {
-    minHeight: 80,
-    textAlignVertical: 'top',
   },
   save: {
     alignItems: 'center',

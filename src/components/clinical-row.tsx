@@ -24,7 +24,7 @@ export function ClinicalRow({ clinical, location, today }: Props) {
       accessibilityRole="button"
       accessibilityHint="Edit or delete this clinical">
       <View style={styles.rowText}>
-        <Text style={styles.pill}>🩺 {typeInfo ? typeInfo.label : 'Clinical'}</Text>
+        <Text style={styles.pill}>{typeInfo ? typeInfo.emoji + " " + typeInfo.label : '🩺 Clinical'}</Text>
         <Text style={styles.rowTitle} numberOfLines={1}>
           {location?.name ?? 'Unknown location'}
         </Text>

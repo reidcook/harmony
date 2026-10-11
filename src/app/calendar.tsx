@@ -252,11 +252,13 @@ function Month({
                   ]}>
                   {fromDateKey(date).getDate()}
                 </Text>
-                <View style={isFuture && styles.futureHeart}>
-                  <DayHeart minutes={totals.get(date) ?? 0} size={22} />
+                <View>
+                  <View style={isFuture && styles.futureHeart}>
+                    <DayHeart minutes={totals.get(date) ?? 0} size={22} />
+                  </View>
+                  {/* Tucked against the heart's lower right, so it takes no room in the grid */}
+                  {hasClinical && <Text style={styles.clinicalMark}>🩺</Text>}
                 </View>
-                {/* Always takes its space so every row is the same height */}
-                <Text style={styles.clinicalMark}>{hasClinical ? '🩺' : ' '}</Text>
               </Pressable>
             );
           })}
@@ -459,8 +461,11 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   clinicalMark: {
-    fontSize: 10,
-    lineHeight: 12,
+    position: 'absolute',
+    right: -6,
+    bottom: -2,
+    fontSize: 9,
+    lineHeight: 11,
   },
   selectedDay: {
     borderColor: Colors.accentDeep,

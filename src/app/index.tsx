@@ -62,9 +62,9 @@ export default function Index() {
 
         <UpcomingsCard today={today} />
 
-        <MonthlyHoursChart today={today} totals={totals} />
-
         <ClinicalsCard today={today} />
+
+        <MonthlyHoursChart today={today} totals={totals} />
       </ScrollView>
       <AddSessionButton />
     </SafeAreaView>

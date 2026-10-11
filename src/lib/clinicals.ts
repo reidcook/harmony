@@ -40,10 +40,16 @@ const tidy = (fields: ClinicalFields) => ({
 
 // Changes save to the account first (while logged in) and only reach this phone if that works
 
-export async function addClinical(fields: ClinicalFields) {
-  const clinical: Clinical = { id: newId(), ...tidy(fields), createdAt: Date.now() };
-  await saveClinicalsToCloud([clinical]);
-  store.set([...getClinicals(), clinical]);
+// One clinical per date, all sharing the same location, time, and description
+export async function addClinicals(dates: string[], fields: Omit<ClinicalFields, 'date'>) {
+  const createdAt = Date.now();
+  const added: Clinical[] = dates.map((date) => ({
+    id: newId(),
+    ...tidy({ ...fields, date }),
+    createdAt,
+  }));
+  await saveClinicalsToCloud(added);
+  store.set([...getClinicals(), ...added]);
 }
 
 export async function updateClinical(id: string, fields: ClinicalFields) {
