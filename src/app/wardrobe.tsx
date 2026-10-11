@@ -102,11 +102,7 @@ export default function Wardrobe() {
                 ]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: item.id === selectedId }}>
-                {item.image ? (
-                  <Image source={item.image} style={styles.tileImage} contentFit="contain" />
-                ) : (
-                  <Text style={styles.tileEmoji}>{item.emoji}</Text>
-                )}
+                <Image source={item.image} style={styles.tileImage} contentFit="contain" />
                 <Text style={styles.tileName}>{item.name}</Text>
                 <Text style={[styles.tileStatus, wearing && styles.tileStatusWearing]}>{status}</Text>
               </Pressable>
@@ -252,12 +248,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.accentDeep,
   },
   tileImage: {
-    width: 56,
-    height: 56,
-  },
-  tileEmoji: {
-    fontSize: 40,
-    lineHeight: 56,
+    width: 96,
+    height: 96,
   },
   tileName: {
     fontSize: 15,
