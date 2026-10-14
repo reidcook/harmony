@@ -6,11 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { useAuthUser } from '@/hooks/use-auth-user';
+import { useReminders } from '@/hooks/use-reminders';
 import { supabase } from '@/lib/supabase';
 import { logOutAndClear } from '@/lib/sync';
 
 export default function Account() {
   const user = useAuthUser();
+  const reminders = useReminders();
   const [loggingOut, setLoggingOut] = useState(false);
 
   const logOut = async () => {
@@ -41,6 +43,18 @@ export default function Account() {
           <Text style={styles.title}>{user ? 'Your account' : 'Not logged in'}</Text>
           {user?.email && <Text style={styles.email}>{user.email}</Text>}
         </View>
+
+        <Pressable
+          onPress={() => router.push('/reminders')}
+          style={({ pressed }) => [styles.card, styles.statusCard, pressed && styles.pressed]}>
+          <SymbolView
+            name={{ ios: 'bell', android: 'notifications', web: 'notifications' }}
+            tintColor={Colors.accentDeep}
+            size={24}
+          />
+          <Text style={styles.statusText}>Reminders</Text>
+          <Text style={styles.rowValue}>{reminders.enabled ? 'On' : 'Off'}</Text>
+        </Pressable>
 
         {!supabase ? (
           <View style={styles.card}>
@@ -137,6 +151,10 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: Colors.text,
+  },
+  rowValue: {
+    fontSize: 15,
+    color: Colors.textMuted,
   },
   body: {
     fontSize: 15,

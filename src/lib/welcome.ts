@@ -3,8 +3,6 @@ import { supabase } from '@/lib/supabase';
 
 const store = createPersistedStore('harmony.welcomeSeen', false);
 
-export const subscribeWelcome = store.subscribe;
-
 export function markWelcomeSeen() {
   if (!store.get()) store.set(true);
 }

@@ -4,12 +4,16 @@ export const ENCOURAGEMENTS = [
   "Every step matters 🪜",
   "Any patient would be lucky to have you 🍀",
   "The NCLEX don't stand a chance 💀",
-  "Study study study to keep me beating 💓",
+  "Your hardwork inspires me 💓",
   "You are an academic weapon 🗡️",
   "Time to get into the rhythm of studying 🎵",
   "Studying is crucial, but remember to give your brain a break 🫶",
   "Another study session down ✅",
   "I believe in you! 🎅",
   "Your dedication is admirable 🤩",
-  "You and every other nurse are heros 🦸"
+  "You and every other nurse are heros 🦸",
+  "Every exam is one step closer 💯",
+  "Your scrubs look great! 👩‍⚕️",
+  "You're crushing it in clinicals, keep it up 🥰"
+
 ];

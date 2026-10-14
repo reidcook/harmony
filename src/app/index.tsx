@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -16,11 +16,11 @@ import { WeekHearts } from '@/components/week-hearts';
 import { WeeklyGoalCard } from '@/components/weekly-goal-card';
 import { Colors } from '@/constants/theme';
 import { useEncouragement } from '@/hooks/use-encouragement';
-import { useShouldWelcome } from '@/hooks/use-should-welcome';
 import { useStudySessions, useToday } from '@/hooks/use-study-sessions';
 import { useWeeklyGoal } from '@/hooks/use-weekly-goal';
+import { getShouldAskReminders, markRemindersAsked } from '@/lib/reminders';
 import { computeWeekStreak, minutesByDate, weekMinutes } from '@/lib/study-sessions';
-import { markWelcomeSeen } from '@/lib/welcome';
+import { getShouldWelcome, markWelcomeSeen } from '@/lib/welcome';
 
 export default function Index() {
   const message = useEncouragement();
@@ -32,13 +32,20 @@ export default function Index() {
   const thisWeekMinutes = today ? weekMinutes(totals, today) : 0;
   const streakWeeks = today ? computeWeekStreak(totals, today, goal) : 0;
 
-  // Offer backup once, on first launch; skipping or swiping it away both count as seen
-  const shouldWelcome = useShouldWelcome();
-  useEffect(() => {
-    if (!shouldWelcome) return;
-    markWelcomeSeen();
-    router.push({ pathname: '/sign-in', params: { welcome: '1' } });
-  }, [shouldWelcome]);
+  // On first launch, offer backup and then reminders, one after the other: closing the first
+  // brings home back into focus, which opens the second. Skipping or swiping away counts as seen.
+  // Reads the stores on focus rather than subscribing, so marking one seen can't open the next early.
+  useFocusEffect(
+    useCallback(() => {
+      if (getShouldWelcome()) {
+        markWelcomeSeen();
+        router.push({ pathname: '/sign-in', params: { welcome: '1' } });
+      } else if (getShouldAskReminders()) {
+        markRemindersAsked();
+        router.push({ pathname: '/reminders', params: { welcome: '1' } });
+      }
+    }, [])
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
