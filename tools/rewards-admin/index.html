@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Harmony Rewards Admin</title>
+<!-- Testing tool only. See README.md. Served by server.mjs, which holds the Supabase secret key. -->
+<style>
+  :root {
+    --background: #fff5f8;
+    --card: #ffffff;
+    --accent: #ff9ec4;
+    --accent-deep: #e0679a;
+    --track: #fce4ee;
+    --text: #3a2a33;
+    --text-muted: #8a7580;
+    --danger: #c8435a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px 16px 64px;
+    background: var(--background);
+    color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 860px; margin: 0 auto; display: grid; gap: 16px; }
+  h1 { margin: 0; font-size: 26px; }
+  h2 { margin: 0 0 12px; font-size: 17px; }
+  .muted { color: var(--text-muted); font-size: 13px; }
+  .card {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(224, 103, 154, 0.15);
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; }
+  input, select {
+    font: inherit;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--track);
+    background: var(--background);
+    color: var(--text);
+    min-width: 0;
+  }
+  input.small { width: 90px; }
+  input.wide { width: 320px; max-width: 100%; }
+  button {
+    font: inherit;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 0;
+    background: var(--accent-deep);
+    color: #fff;
+    cursor: pointer;
+  }
+  button.soft { background: var(--track); color: var(--accent-deep); }
+  button.danger { background: transparent; color: var(--danger); border: 1.5px solid var(--danger); }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #banner {
+    display: none;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #fde2e7;
+    color: var(--danger);
+    font-weight: 600;
+  }
+  #banner.ok { background: var(--track); color: var(--accent-deep); }
+  .stats { display: flex; flex-wrap: wrap; gap: 24px; }
+  .stat b { display: block; font-size: 28px; color: var(--accent-deep); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--track); white-space: nowrap; }
+  th { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  td input { width: 80px; padding: 4px 8px; }
+  td.actions { display: flex; gap: 6px; }
+  td.actions button { padding: 4px 10px; font-size: 13px; }
+  .hidden { display: none !important; }
+  code { background: var(--track); padding: 1px 6px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Harmony Rewards Admin</h1>
+    <div class="muted">A testing tool for editing one account's rewards and purchases in Supabase.</div>
+  </div>
+
+  <div id="banner"></div>
+
+  <section class="card">
+    <h2>Account</h2>
+    <div class="row">
+      <label>Account email
+        <input id="email" class="wide" type="email" />
+      </label>
+      <button id="lookup">Look up</button>
+    </div>
+    <div id="who" class="muted" style="margin-top: 8px"></div>
+  </section>
+
+  <div id="account" class="hidden" style="display: grid; gap: 16px">
+    <section class="card">
+      <div class="stats">
+        <div class="stat"><b id="balance">0</b>hearts to spend</div>
+        <div class="stat"><b id="earned">0</b>earned</div>
+        <div class="stat"><b id="spent">0</b>spent</div>
+      </div>
+      <div class="row" style="margin-top: 12px">
+        <label>Hearts
+          <input id="grantAmount" class="small" type="number" min="1" value="100" />
+        </label>
+        <button id="grant">Grant hearts</button>
+        <button id="refresh" class="soft">Refresh</button>
+      </div>
+      <div class="muted" style="margin-top: 6px">
+        Grants are saved as a <code>day</code> reward on an unused date before 2000, so they never clash with real rewards.
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Rewards <span id="rewardCount" class="muted"></span></h2>
+      <div class="row" style="margin-bottom: 12px">
+        <label>Kind
+          <select id="newKind"><option value="day">day</option><option value="week">week</option></select>
+        </label>
+        <label>Date
+          <input id="newDate" type="date" />
+        </label>
+        <label>Points
+          <input id="newPoints" class="small" type="number" min="1" value="5" />
+        </label>
+        <label>Goal (min, optional)
+          <input id="newGoal" class="small" type="number" min="1" />
+        </label>
+        <button id="addReward">Add reward</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>id</th><th>points</th><th>goal</th><th>earned</th><th></th></tr></thead>
+          <tbody id="rewards"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top: 12px">
+        <button id="clearRewards" class="danger">Delete all rewards</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Purchases <span id="purchaseCount" class="muted"></span></h2>
+      <div class="row" style="margin-bottom: 12px">
+        <label>Item id
+          <input id="newItem" list="cosmetics" placeholder="hat-sunglasses" />
+        </label>
+        <label>Price
+          <input id="newPrice" class="small" type="number" min="0" value="0" />
+        </label>
+        <button id="addPurchase">Add purchase</button>
+      </div>
+      <!-- From src/constants/cosmetics.ts; update when items change -->
+      <datalist id="cosmetics">
+        <option value="hat-sunglasses">Sunglasses · 200</option>
+        <option value="face-mask">Face Mask · 50</option>
+        <option value="stethoscope">Stethoscope · 50</option>
+        <option value="held-coffee">Coffee · 100</option>
+        <option value="background-sun">Sunshine · 250</option>
+      </datalist>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>item</th><th>price</th><th>purchased</th><th></th></tr></thead>
+          <tbody id="purchases"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top: 12px">
+        <button id="clearPurchases" class="danger">Delete all purchases</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Outfit</h2>
+      <div id="equipped" class="muted"></div>
+      <div class="row" style="margin-top: 12px">
+        <button id="clearOutfit" class="soft">Clear outfit</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let user = null; // { id, email, weekly_goal_minutes, equipped }
+  let rewards = [];
+  let purchases = [];
+
+  try {
+    $('email').value = localStorage.getItem('harmonyAdmin.email') ?? '';
+  } catch {}
+
+  // Calls server.mjs, which talks to Supabase with the secret key
+  async function api(action, body = {}) {
+    const res = await fetch(`/api/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user?.id, ...body }),
+    });
+    const json = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
+    if (!res.ok) throw new Error(json.error);
+    return json.data;
+  }
+
+  function show(message, ok = false) {
+    const banner = $('banner');
+    banner.textContent = message;
+    banner.className = ok ? 'ok' : '';
+    banner.style.display = message ? 'block' : 'none';
+  }
+
+  // Runs an action, then reloads; any failure lands in the banner
+  async function act(task, done) {
+    show('');
+    document.querySelectorAll('button').forEach((b) => (b.disabled = true));
+    try {
+      await task();
+      if (user) await load();
+      if (done) show(done, true);
+    } catch (e) {
+      show(e?.message || String(e));
+    } finally {
+      document.querySelectorAll('button').forEach((b) => (b.disabled = false));
+    }
+  }
+
+  async function lookup() {
+    const email = $('email').value.trim();
+    if (!email) throw new Error('Enter an email.');
+    try {
+      localStorage.setItem('harmonyAdmin.email', email);
+    } catch {}
+    user = null;
+    $('account').classList.add('hidden');
+    user = await api('lookup', { email });
+  }
+
+  async function load() {
+    const data = await api('load');
+    rewards = data.rewards;
+    purchases = data.purchases;
+    user = data.user;
+    render();
+  }
+
+  const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : '');
+
+  function cell(content) {
+    const td = document.createElement('td');
+    if (content instanceof Node) td.append(content);
+    else td.textContent = content ?? '';
+    return td;
+  }
+
+  function numberInput(value, min) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(min);
+    input.value = value ?? '';
+    return input;
+  }
+
+  function button(label, cls, onClick) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (cls) b.className = cls;
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function render() {
+    $('account').classList.remove('hidden');
+    $('who').textContent = `${user.email} · ${user.id} · weekly goal ${user.weekly_goal_minutes} min`;
+
+    const earned = rewards.reduce((s, r) => s + r.points, 0);
+    const spent = purchases.reduce((s, p) => s + p.price, 0);
+    $('earned').textContent = earned;
+    $('spent').textContent = spent;
+    $('balance').textContent = earned - spent;
+    $('rewardCount').textContent = `(${rewards.length})`;
+    $('purchaseCount').textContent = `(${purchases.length})`;
+
+    const rewardBody = $('rewards');
+    rewardBody.replaceChildren();
+    for (const r of rewards) {
+      const tr = document.createElement('tr');
+      const points = numberInput(r.points, 1);
+      const goal = numberInput(r.goal, 1);
+      const actions = document.createElement('td');
+      actions.className = 'actions';
+      actions.append(
+        button('Save', 'soft', () =>
+          act(async () => {
+            const p = parseInt(points.value, 10);
+            if (!(p > 0)) throw new Error('Points must be more than 0.');
+            const g = goal.value === '' ? null : parseInt(goal.value, 10);
+            await api('updateReward', { id: r.id, points: p, goal: g });
+          }, `Saved ${r.id}.`)
+        ),
+        button('Delete', 'danger', () =>
+          act(() => api('deleteReward', { id: r.id }), `Deleted ${r.id}.`)
+        )
+      );
+      tr.append(cell(r.id), cell(points), cell(goal), cell(fmt(r.earned_at)), actions);
+      rewardBody.append(tr);
+    }
+    if (rewards.length === 0) {
+      const tr = document.createElement('tr');
+      const td = cell('No rewards.');
+      td.colSpan = 5;
+      td.className = 'muted';
+      tr.append(td);
+      rewardBody.append(tr);
+    }
+
+    const purchaseBody = $('purchases');
+    purchaseBody.replaceChildren();
+    for (const p of purchases) {
+      const tr = document.createElement('tr');
+      const price = numberInput(p.price, 0);
+      const actions = document.createElement('td');
+      actions.className = 'actions';
+      actions.append(
+        button('Save', 'soft', () =>
+          act(async () => {
+            const value = parseInt(price.value, 10);
+            if (!(value >= 0)) throw new Error('Price must be 0 or more.');
+            await api('updatePurchase', { itemId: p.item_id, price: value });
+          }, `Saved ${p.item_id}.`)
+        ),
+        button('Delete', 'danger', () =>
+          act(() => api('deletePurchase', { itemId: p.item_id }), `Deleted ${p.item_id}.`)
+        )
+      );
+      tr.append(cell(p.item_id), cell(price), cell(fmt(p.purchased_at)), actions);
+      purchaseBody.append(tr);
+    }
+    if (purchases.length === 0) {
+      const tr = document.createElement('tr');
+      const td = cell('No purchases.');
+      td.colSpan = 4;
+      td.className = 'muted';
+      tr.append(td);
+      purchaseBody.append(tr);
+    }
+
+    const equipped = user.equipped ?? {};
+    const parts = Object.entries(equipped).map(([slot, item]) => `${slot}: ${item}`);
+    $('equipped').textContent = parts.length ? parts.join(' · ') : 'Wearing nothing.';
+  }
+
+  // YYYY-MM-DD for a Date, in UTC so stepping back a day is exact
+  const dateKey = (d) => d.toISOString().slice(0, 10);
+
+  $('lookup').addEventListener('click', () => act(lookup, 'Connected.'));
+  $('refresh').addEventListener('click', () => act(async () => {}, 'Refreshed.'));
+
+  $('grant').addEventListener('click', () =>
+    act(async () => {
+      const amount = parseInt($('grantAmount').value, 10);
+      if (!(amount > 0)) throw new Error('Grant at least 1 heart.');
+      const taken = new Set(rewards.map((r) => r.id));
+      const d = new Date(Date.UTC(2000, 0, 1));
+      while (taken.has(`day:${dateKey(d)}`)) d.setUTCDate(d.getUTCDate() - 1);
+      const date = dateKey(d);
+      await api('addReward', { id: `day:${date}`, kind: 'day', date, points: amount, goal: null });
+    }, 'Hearts granted.')
+  );
+
+  $('addReward').addEventListener('click', () =>
+    act(async () => {
+      const kind = $('newKind').value;
+      const date = $('newDate').value;
+      const points = parseInt($('newPoints').value, 10);
+      const goal = $('newGoal').value === '' ? null : parseInt($('newGoal').value, 10);
+      if (!date) throw new Error('Pick a date.');
+      if (!(points > 0)) throw new Error('Points must be more than 0.');
+      const id = `${kind}:${date}`;
+      if (rewards.some((r) => r.id === id)) throw new Error(`${id} already exists. Edit it instead.`);
+      await api('addReward', { id, kind, date, points, goal });
+    }, 'Reward added.')
+  );
+
+  $('addPurchase').addEventListener('click', () =>
+    act(async () => {
+      const itemId = $('newItem').value.trim();
+      const price = parseInt($('newPrice').value, 10);
+      if (!itemId) throw new Error('Enter an item id.');
+      if (!(price >= 0)) throw new Error('Price must be 0 or more.');
+      if (purchases.some((p) => p.item_id === itemId)) throw new Error(`${itemId} is already bought.`);
+      await api('addPurchase', { itemId, price });
+    }, 'Purchase added.')
+  );
+
+  $('clearRewards').addEventListener('click', () => {
+    if (!confirm(`Delete all ${rewards.length} rewards for ${user.email}?`)) return;
+    act(() => api('deleteAllRewards'), 'All rewards deleted.');
+  });
+
+  $('clearPurchases').addEventListener('click', () => {
+    if (!confirm(`Delete all ${purchases.length} purchases for ${user.email}?`)) return;
+    act(() => api('deleteAllPurchases'), 'All purchases deleted.');
+  });
+
+  $('clearOutfit').addEventListener('click', () =>
+    act(() => api('clearOutfit'), 'Outfit cleared.')
+  );
+</script>
+</body>
+</html>

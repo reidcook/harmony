@@ -1,4 +1,6 @@
 import { getAuthUser } from '@/lib/auth';
+import type { ClinicalLocation, ClinicalLocationType } from '@/lib/clinical-locations';
+import type { Clinical } from '@/lib/clinicals';
 import type { Reward, RewardKind } from '@/lib/rewards';
 import type { StudySession } from '@/lib/study-sessions';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +26,25 @@ type UpcomingRow = {
   type: UpcomingType;
   title: string;
   date: string;
+  created_at: string;
+};
+
+type ClinicalLocationRow = {
+  user_id: string;
+  id: string;
+  // The table also has a description column, which the app doesn't use
+  name: string;
+  type: ClinicalLocationType | null;
+  created_at: string;
+};
+
+type ClinicalRow = {
+  user_id: string;
+  id: string;
+  date: string;
+  location_id: string;
+  minutes: number | null;
+  description: string;
   created_at: string;
 };
 
@@ -77,6 +98,40 @@ const rowToUpcoming = (r: UpcomingRow): Upcoming => ({
   type: r.type,
   title: r.title,
   date: r.date,
+  createdAt: Date.parse(r.created_at),
+});
+
+const clinicalLocationToRow = (l: ClinicalLocation, userId: string): ClinicalLocationRow => ({
+  user_id: userId,
+  id: l.id,
+  name: l.name,
+  type: l.type,
+  created_at: new Date(l.createdAt).toISOString(),
+});
+
+const rowToClinicalLocation = (r: ClinicalLocationRow): ClinicalLocation => ({
+  id: r.id,
+  name: r.name,
+  type: r.type,
+  createdAt: Date.parse(r.created_at),
+});
+
+const clinicalToRow = (c: Clinical, userId: string): ClinicalRow => ({
+  user_id: userId,
+  id: c.id,
+  date: c.date,
+  location_id: c.locationId,
+  minutes: c.minutes,
+  description: c.description,
+  created_at: new Date(c.createdAt).toISOString(),
+});
+
+const rowToClinical = (r: ClinicalRow): Clinical => ({
+  id: r.id,
+  date: r.date,
+  locationId: r.location_id,
+  minutes: r.minutes,
+  description: r.description,
   createdAt: Date.parse(r.created_at),
 });
 
@@ -164,6 +219,37 @@ export async function deleteUpcomingFromCloud(id: string) {
   await write((db, userId) => db.from('upcomings').delete().eq('user_id', userId).eq('id', id));
 }
 
+export async function saveClinicalLocationsToCloud(locations: ClinicalLocation[]) {
+  if (locations.length === 0) return;
+  await write((db, userId) =>
+    db.from('clinical_locations').upsert(
+      locations.map((l) => clinicalLocationToRow(l, userId)),
+      { onConflict: 'user_id,id' }
+    )
+  );
+}
+
+export async function deleteClinicalLocationFromCloud(id: string) {
+  await write((db, userId) =>
+    db.from('clinical_locations').delete().eq('user_id', userId).eq('id', id)
+  );
+}
+
+// Their locations must already be saved
+export async function saveClinicalsToCloud(clinicals: Clinical[]) {
+  if (clinicals.length === 0) return;
+  await write((db, userId) =>
+    db.from('clinicals').upsert(
+      clinicals.map((c) => clinicalToRow(c, userId)),
+      { onConflict: 'user_id,id' }
+    )
+  );
+}
+
+export async function deleteClinicalFromCloud(id: string) {
+  await write((db, userId) => db.from('clinicals').delete().eq('user_id', userId).eq('id', id));
+}
+
 export async function saveGoalToCloud(minutes: number) {
   await write((db, userId) =>
     db.from('users').update({ weekly_goal_minutes: minutes }).eq('id', userId)
@@ -200,16 +286,23 @@ export async function saveEquippedToCloud(equipped: Equipped) {
 export async function fetchAccountData() {
   const user = getAuthUser();
   if (!supabase || !user) return null;
-  const [sessions, upcomings, rewards, purchases, profile] = await Promise.all([
-    supabase.from('sessions').select('*').eq('user_id', user.id),
-    supabase.from('upcomings').select('*').eq('user_id', user.id),
-    supabase.from('rewards').select('*').eq('user_id', user.id),
-    supabase.from('purchases').select('*').eq('user_id', user.id),
-    supabase.from('users').select('weekly_goal_minutes, equipped').eq('id', user.id).maybeSingle(),
-  ]);
+  const [sessions, upcomings, clinicalLocations, clinicals, rewards, purchases, profile] =
+    await Promise.all([
+      supabase.from('sessions').select('*').eq('user_id', user.id),
+      supabase.from('upcomings').select('*').eq('user_id', user.id),
+      supabase.from('clinical_locations').select('*').eq('user_id', user.id),
+      supabase.from('clinicals').select('*').eq('user_id', user.id),
+      supabase.from('rewards').select('*').eq('user_id', user.id),
+      supabase.from('purchases').select('*').eq('user_id', user.id),
+      supabase.from('users').select('weekly_goal_minutes, equipped').eq('id', user.id).maybeSingle(),
+    ]);
   return {
     sessions: (check(sessions).data as SessionRow[]).map(rowToSession),
     upcomings: (check(upcomings).data as UpcomingRow[]).map(rowToUpcoming),
+    clinicalLocations: (check(clinicalLocations).data as ClinicalLocationRow[]).map(
+      rowToClinicalLocation
+    ),
+    clinicals: (check(clinicals).data as ClinicalRow[]).map(rowToClinical),
     rewards: (check(rewards).data as RewardRow[]).map(rowToReward),
     purchases: (check(purchases).data as PurchaseRow[]).map(rowToPurchase),
     goal: check(profile).data?.weekly_goal_minutes as number | undefined,

@@ -2,9 +2,13 @@ import { AppState } from 'react-native';
 
 import { DEFAULT_WEEKLY_GOAL_MINUTES } from '@/constants/goal';
 import { getAuthUser, signOut, verifyCode } from '@/lib/auth';
+import { getClinicalLocations, replaceClinicalLocations } from '@/lib/clinical-locations';
+import { getClinicals, replaceClinicals } from '@/lib/clinicals';
 import {
   fetchAccountData,
   getCloudWriteCount,
+  saveClinicalLocationsToCloud,
+  saveClinicalsToCloud,
   saveEquippedToCloud,
   saveGoalToCloud,
   savePurchasesToCloud,
@@ -47,6 +51,8 @@ export async function refreshFromCloud() {
     if (!data || getCloudWriteCount() !== writesBefore) return;
     replaceSessions(data.sessions);
     replaceUpcomings(data.upcomings);
+    replaceClinicalLocations(data.clinicalLocations);
+    replaceClinicals(data.clinicals);
     replaceRewards(data.rewards);
     replacePurchases(data.purchases);
     replaceEquipped(data.equipped);
@@ -67,10 +73,18 @@ export async function logIn(email: string, code: string) {
     const data = await fetchAccountData();
     await saveSessionsToCloud(getSessions());
     await saveUpcomingsToCloud(getUpcomings());
+    // Locations before the clinicals that point at them
+    await saveClinicalLocationsToCloud(getClinicalLocations());
+    await saveClinicalsToCloud(getClinicals());
     await saveRewardsToCloud(getRewards());
     await savePurchasesToCloud(getPurchases());
     // A brand-new account takes this phone's goal and outfit; an existing one keeps its own
-    if (data && data.sessions.length === 0 && data.upcomings.length === 0) {
+    if (
+      data &&
+      data.sessions.length === 0 &&
+      data.upcomings.length === 0 &&
+      data.clinicals.length === 0
+    ) {
       await saveGoalToCloud(getWeeklyGoal());
       await saveEquippedToCloud(getEquipped());
     }
@@ -86,6 +100,8 @@ export async function logOutAndClear() {
   await signOut();
   replaceSessions([]);
   replaceUpcomings([]);
+  replaceClinicals([]);
+  replaceClinicalLocations([]);
   replaceWeeklyGoal(DEFAULT_WEEKLY_GOAL_MINUTES);
   replaceRewards(EMPTY_REWARDS);
   clearPendingRewards();

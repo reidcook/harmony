@@ -40,7 +40,7 @@ export default function Upcomings() {
           </Pressable>
         </View>
 
-        <Text style={styles.title}>Upcoming</Text>
+        <Text style={styles.title}>Upcoming Assessments</Text>
 
         {/* Past vs. coming up depends on today's date, which the static web render doesn't know */}
         {today && (

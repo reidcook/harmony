@@ -30,15 +30,15 @@ import {
 
 const TYPES = Object.keys(UPCOMING_TYPES) as UpcomingType[];
 
-// Creates a quiz/exam/final, or edits one when opened with ?id=
+// Creates a quiz/exam/final (on ?date= if given), or edits one when opened with ?id=
 export default function AddUpcoming() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, date: dateParam } = useLocalSearchParams<{ id?: string; date?: string }>();
   const existing = id ? getUpcoming(id) : undefined;
   const today = useToday();
 
   const [type, setType] = useState<UpcomingType>(existing?.type ?? 'exam');
   const [title, setTitle] = useState(existing?.title ?? '');
-  const [date, setDate] = useState<string | null>(existing?.date ?? null);
+  const [date, setDate] = useState<string | null>(existing?.date ?? dateParam ?? null);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -20,6 +20,9 @@ export default function RootLayout() {
       <Stack.Screen name="add-upcoming" options={{ presentation: 'modal' }} />
       <Stack.Screen name="upcomings" options={{ presentation: 'modal' }} />
       <Stack.Screen name="upcoming/[id]" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="clinicals" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="add-clinical" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="add-clinical-location" options={{ presentation: 'modal' }} />
       <Stack.Screen name="account" options={{ presentation: 'modal' }} />
       <Stack.Screen name="sign-in" options={{ presentation: 'modal' }} />
       <Stack.Screen name="wardrobe" options={{ presentation: 'modal' }} />

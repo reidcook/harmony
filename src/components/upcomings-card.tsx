@@ -22,7 +22,7 @@ export function UpcomingsCard({ today }: Props) {
       accessibilityRole="button"
       accessibilityHint="See all quizzes, exams, and finals">
       <View style={styles.header}>
-        <Text style={styles.title}>Upcoming</Text>
+        <Text style={styles.title}>Upcoming Assessments</Text>
         <View style={styles.headerActions}>
           <Text style={styles.seeAll}>See all ›</Text>
           <Pressable
