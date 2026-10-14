@@ -96,6 +96,14 @@ export const COSMETICS: Cosmetic[] = [
     price: 100,
   },
 
+  {
+    id: 'tablet',
+    name: 'Tablet',
+    slot: 'held',
+    image: require('@/assets/harmony/cosmetics/held/tablet.png'),
+    price: 100,
+  },
+
   // Backgrounds
   {
     id: 'background-sun',
